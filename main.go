@@ -8,9 +8,7 @@ import (
 var _ string = fmt.Sprint("test")
 
 const (
-	DEFAULT_N   = 8
-	BlackString = "○"
-	WhiteString = "●"
+	DEFAULT_N = 8
 )
 
 func main() {

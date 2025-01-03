@@ -36,11 +36,20 @@ type Game struct {
 }
 
 func NewGame(b *Board, type1, type2 PlayerType) Game {
+	name1, name2 := "Player 1", "Player 2"
+	if type1 == AI {
+		name1 += " (AI)"
+	}
+
+	if type2 == AI {
+		name2 += " (AI)"
+	}
+
 	return Game{
 		b,
 		Initialized,
-		Player{"Player 1", type1, Black},
-		Player{"Player 2", type2, White},
+		Player{name1, type1, Black},
+		Player{name2, type2, White},
 		"",
 		0}
 }
@@ -126,7 +135,7 @@ func (g *Game) finish() {
 
 func (g *Game) generateResultMessage() string {
 	totalB, totalW := g.Board.Finish()
-	m := fmt.Sprintf("Black: %d, White %d,", totalB, totalW)
+	m := fmt.Sprintf("Black %d, White %d,", totalB, totalW)
 
 	var playerB, playerW Player
 	if g.Player1.Colour == Black {
@@ -165,22 +174,12 @@ func (g *Game) getCurrentPlayer() Player {
 }
 
 func (g *Game) getPlayerTypesMessage() string {
-	player1Type, player2Type := "", ""
-
-	if g.Player1.Type == AI {
-		player1Type = " (AI)"
-	}
-	if g.Player2.Type == AI {
-		player2Type = " (AI)"
-	}
 
 	return fmt.Sprintf(
-		"%s%s: %s, %s%s: %s",
+		"%s: %s, %s: %s",
 		g.Player1.Name,
-		player1Type,
 		g.Player1.Colour,
 		g.Player2.Name,
-		player2Type,
 		g.Player2.Colour,
 	)
 }

@@ -151,6 +151,11 @@ func TestPassAndFinishGame(t *testing.T) {
 	if g.State != Finished {
 		t.Errorf("want Finished, got %v", g.State)
 	}
+
+	wantMsg := "Black 4, White 12, Player 2 won"
+	if g.Message != wantMsg {
+		t.Errorf("want '%s', got %s", wantMsg, g.Message)
+	}
 }
 
 func TestRetry(t *testing.T) {

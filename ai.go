@@ -8,10 +8,12 @@ func getAiPosition(b *Board) Position {
 
 	f := rand.Float32()
 
-	if f > 0.4 {
+	if f < 0.4 {
 		return getMinGain(b)
-	} else {
+	} else if f < 0.7 {
 		return getMaxGain(b)
+	} else {
+		return getRandom(b)
 	}
 }
 
@@ -62,4 +64,29 @@ func getMaxGain(b *Board) Position {
 	}
 
 	return tmpPosition
+}
+
+// place randomly
+func getRandom(b *Board) Position {
+	positions := make([]Position, 0, 100)
+
+	for x := 0; x < b.N; x++ {
+		for y := 0; y < b.N; y++ {
+			if b.Cells[y][x] != HasNothing {
+				continue
+			}
+
+			result := b.GetCellsToFlip(x, y)
+
+			gain := len(result)
+			if gain > 0 {
+				positions = append(positions, Position{x, y})
+
+			}
+		}
+	}
+
+	key := rand.Intn(len(positions))
+
+	return positions[key]
 }

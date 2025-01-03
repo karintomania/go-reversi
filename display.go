@@ -7,6 +7,16 @@ import (
 	"github.com/pkg/term"
 )
 
+const (
+	BlackString     = "○"
+	WhiteString     = "●"
+	NothingString   = "_"
+	LeftWallString  = "|"
+	RightWallString = "|"
+	CursorString    = "*"
+	Spacer          = "    "
+)
+
 type Display struct {
 	tm *term.Term
 }
@@ -51,42 +61,55 @@ func (d *Display) Rendor(b *Board, state GameState, message string) {
 	n := len(b.Cells)
 
 	for y := 0; y < n; y++ {
-		fmt.Print("\r[")
+		rowStr := RightWallString
 		for x := 0; x < n; x++ {
 			s := b.Cells[y][x]
-			if y == p.Y && x == p.X {
-				fmt.Print(getFocusedCellContent(s))
+			if y == p.Y && x == p.X { // on focus
+				rowStr += getFocusedCellContent(s)
 			} else {
-				fmt.Print(getCellContent(s))
+				rowStr += getCellContent(s)
 			}
 		}
-		fmt.Print(" ]\n")
+		rowStr += LeftWallString
+		printWithSpacer(rowStr)
 	}
 
-	// print turn if playin
+	// print turn if playing
+	print("")
 	if state == Playing {
-		fmt.Printf("\n\rNext: %s", b.Turn)
+		print(fmt.Sprintf("[Turn] %s", b.Turn))
 	} else {
-		fmt.Print("\n\r\033[K")
+		print("[Turn] -")
 	}
 
 	// print message
-	fmt.Printf("\n\r\033[K%s\n", message)
+	print(fmt.Sprintf("[Message] %s", message))
 
 	// print key bindings
+	print("")
 	if state == Playing {
-		fmt.Printf("\r%s", "←↓↑→: a,s,w,d | <space> place | Quit: c")
+		print("[Keys] ←↓↑→: a,s,w,d | Place: <space> | Quit: c")
 	} else {
-		fmt.Printf("\r\033[K%s", "Replay: r | Quit: c")
+		print("[Keys] Play Again: r | Quit: c")
 	}
 
 	// move curosr up
-	fmt.Printf("\033[%dA\r", n+3)
+	fmt.Printf("\033[%dA\r", n+5)
+}
+
+func printWithSpacer(s string) {
+	fmt.Printf("\r\033[K%s%s", Spacer, s)
+	fmt.Print("\n")
+}
+
+func print(s string) {
+	fmt.Printf("\r\033[K%s", s)
+	fmt.Print("\n")
 }
 
 func getFocusedCellContent(s State) string {
 	if s == HasNothing {
-		return " ■"
+		return fmt.Sprintf(" %s", CursorString)
 	} else if s == HasBlack {
 		return fmt.Sprintf("|%s", BlackString)
 	} else {
@@ -96,7 +119,7 @@ func getFocusedCellContent(s State) string {
 
 func getCellContent(s State) string {
 	if s == HasNothing {
-		return " □"
+		return fmt.Sprintf(" %s", NothingString)
 	} else if s == HasBlack {
 		return fmt.Sprintf(" %s", BlackString)
 	} else {
