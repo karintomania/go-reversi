@@ -5,18 +5,15 @@ import (
 )
 
 type Board struct {
-	N         int
-	Cells     [][]State
-	Turn      Turn
-	Message   string
-	Position  Position
-	GameState GameState
+	N        int
+	Cells    [][]State
+	Turn     Turn
+	Message  string
+	Position Position
 }
 
 func (b *Board) init(n int) {
 	b.N = n
-
-	b.GameState = Playing
 
 	b.Turn = Black
 
@@ -66,7 +63,12 @@ func (b *Board) Pass() {
 
 }
 
-func (b *Board) GetPcPosition() Position {
+func (b *Board) PlaceByAi() {
+	b.Position = b.getAiPosition()
+	b.Place()
+}
+
+func (b *Board) getAiPosition() Position {
 	maxCount := 0
 	tmpPosition := Position{0, 0}
 
@@ -337,7 +339,6 @@ func (b *Board) Finish() {
 	}
 
 	b.Message = message
-	b.GameState = Finished
 }
 
 func (b *Board) FromStringCells(cellsStr [][]string) {
@@ -402,14 +403,6 @@ func (p *Position) addX(n int, maxN int) {
 func (p *Position) addY(n int, maxN int) {
 	p.Y = min(max(p.Y+n, 0), maxN-1)
 }
-
-type GameState int
-
-const (
-	Playing GameState = iota
-	Finished
-	Quit
-)
 
 type Turn bool
 

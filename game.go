@@ -1,34 +1,45 @@
 package main
 
+type GameState int
+
+const (
+	Playing GameState = iota
+	Finished
+	Quit
+)
+
 type Game struct {
-	Board     Board
-	State     GameState
-	PassCount int
+	Board       *Board
+	State       GameState
+	PlayerBlack Player
+	PlayerWhite Player
+	passCount   int
 }
 
-func (g *Game) Progress(d *Display) {
+func NewGame(b *Board, typeB, typeW PlayerType) Game {
+	return Game{b, Playing, Player{typeB}, Player{typeW}, 0}
+}
+
+func (g *Game) Progress(in <-chan string) {
 	b := g.Board
 
-	if b.GameState == Playing {
-		if g.PassCount >= 2 {
-			g.State = Finished
-			g.PassCount = 0
+	if g.State == Playing {
+		if g.passCount >= 2 {
+			g.finish()
 			return
 		}
 
 		if !b.HasPlayableCells() {
-			b.Pass()
-			g.PassCount++
+			g.pass()
 			return
 		}
 
-		if b.Turn == White {
-			b.Position = b.GetPcPosition()
-			b.Place()
+		if g.getPlayer().Type == AI {
+			b.PlaceByAi()
 			return
 		}
 
-		char := d.Read()
+		char := <-in
 
 		switch char {
 		// move position
@@ -45,28 +56,58 @@ func (g *Game) Progress(d *Display) {
 		case " ":
 			b.Place()
 
-		// pass
-		case "p":
-			b.Pass()
-
 		// quit
 		case "c":
 			g.State = Quit
-			return
 		}
 	}
 
-	if b.GameState == Finished {
-		char := d.Read()
+	if g.State == Finished {
+		char := <-in
 
 		switch char {
 		case "r":
-			b.init(MAX)
+			g.replay()
 		// quit
 		case "c":
 			g.State = Quit
 			return
 		}
 	}
-
 }
+
+func (g *Game) replay() {
+	g.Board.init(MAX)
+	g.passCount = 0
+	g.State = Playing
+}
+
+func (g *Game) finish() {
+	g.Board.Finish()
+	g.State = Finished
+}
+
+func (g *Game) pass() {
+	g.passCount++
+	g.Board.Pass()
+}
+
+func (g *Game) getPlayer() Player {
+	turn := g.Board.Turn
+	if turn == Black {
+		return g.PlayerBlack
+	} else {
+		return g.PlayerWhite
+	}
+}
+
+type Player struct {
+	Type PlayerType
+}
+
+type PlayerType int
+
+const (
+	Human PlayerType = iota
+	AI
+)

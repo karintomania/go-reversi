@@ -23,7 +23,7 @@ func NewDisplay() Display {
 	return d
 }
 
-func (d *Display) Read() string {
+func (d *Display) Read(out chan string) {
 	readBytes := make([]byte, 1)
 	_, err := d.tm.Read(readBytes)
 	if err != nil {
@@ -32,14 +32,16 @@ func (d *Display) Read() string {
 
 	char := string(readBytes[0])
 
-	return char
+	fmt.Print(char)
+
+	out <- char
 }
 
 func (d *Display) Close() {
 	d.tm.Restore()
 	d.tm.Close()
 }
-func (d *Display) Rendor(b Board) {
+func (d *Display) Rendor(b *Board, state GameState) {
 	p := b.Position
 
 	n := len(b.Cells)
@@ -69,15 +71,15 @@ func (d *Display) Rendor(b Board) {
 		fmt.Print(" ]\n")
 	}
 
-	if b.GameState == Playing {
+	if state == Playing {
 		fmt.Printf("\n\rNext: %s", b.Turn)
 	} else {
 		fmt.Print("\n\r\033[K")
 	}
 	fmt.Printf("\n\r\033[K%s\n", b.Message)
 
-	if b.GameState == Playing {
-		fmt.Printf("\r%s", "←↓↑→: a,s,w,d | <space> place | Pass: p | Quit: c")
+	if state == Playing {
+		fmt.Printf("\r%s", "←↓↑→: a,s,w,d | <space> place | Quit: c")
 	} else {
 		fmt.Printf("\r\033[K%s", "Replay: r | Quit: c")
 	}
