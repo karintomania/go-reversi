@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestIsCellAvailable(t *testing.T) {
+func TestIsCellTaken(t *testing.T) {
 	type input struct {
 		X     int
 		Y     int
@@ -25,11 +25,20 @@ func TestIsCellAvailable(t *testing.T) {
 		want := c.Want
 		b := Board{}
 
-		b.init(2)
+		b.init(4)
+
+		b.FromStringCells(
+			[][]string{
+				{"w", "w", "w", "w"},
+				{"w", "w", "w", "w"},
+				{"w", "w", "w", "w"},
+				{"w", "w", "w", "w"},
+			},
+		)
 
 		b.Cells[input.X][input.Y] = input.State
 		b.Position = Position{input.X, input.Y}
-		got := b.isCellAvailable()
+		got := b.isCellTaken()
 
 		if got != want {
 			t.Errorf("want %v, got %v", want, got)

@@ -4,6 +4,32 @@ import (
 	"testing"
 )
 
+func TestQuitGame(t *testing.T) {
+	var b Board
+
+	b.init(4)
+
+	g := NewGame(&b, Human, Human)
+
+	ch := make(chan string)
+
+	testStates := []GameState{Playing, Finished}
+
+	for _, currentState := range testStates {
+		g.State = currentState
+
+		// quit
+		go func() {
+			ch <- "c"
+		}()
+		g.Progress(ch)
+
+		if g.State != Quit {
+			t.Errorf("Can't quit from %s, got %s", currentState, g.State)
+		}
+	}
+}
+
 func TestGameMovingPosition(t *testing.T) {
 	var b Board
 
@@ -130,7 +156,16 @@ func TestPassAndFinishGame(t *testing.T) {
 func TestRetry(t *testing.T) {
 	var b Board
 
-	b.init(2)
+	b.init(4)
+
+	b.FromStringCells(
+		[][]string{
+			{"b", "b", "b", "b"},
+			{"b", "b", "b", "b"},
+			{"b", "b", "b", "b"},
+			{"b", "b", "b", "b"},
+		},
+	)
 
 	g := NewGame(&b, Human, AI)
 

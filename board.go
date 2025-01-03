@@ -66,9 +66,8 @@ func (b *Board) PlaceByAi() {
 }
 
 func (b *Board) Place() error {
-	// validate
-	isValid := b.isCellAvailable()
-
+	// check if the cell is taken
+	isValid := b.isCellTaken()
 	if !isValid {
 		return fmt.Errorf("You can't place there.")
 	}
@@ -76,6 +75,7 @@ func (b *Board) Place() error {
 	// get cells to flip
 	cellsToFlip := b.GetCellsToFlip(b.Position.X, b.Position.Y)
 
+	// error if no cells to flip
 	if len(cellsToFlip) == 0 {
 		return fmt.Errorf("You can't place there.")
 	}
@@ -116,7 +116,7 @@ func (b *Board) HasPlayableCells() bool {
 	return false
 }
 
-func (b *Board) isCellAvailable() bool {
+func (b *Board) isCellTaken() bool {
 	state := b.Cells[b.Position.Y][b.Position.X]
 	return state == HasNothing
 }

@@ -30,9 +30,13 @@ func (d *Display) Read(out chan string) {
 		log.Fatal(err)
 	}
 
-	char := string(readBytes[0])
+	var char string
+	if readBytes[0] == 3 {
+		char = "c"
 
-	fmt.Print(char)
+	} else {
+		char = string(readBytes[0])
+	}
 
 	out <- char
 }

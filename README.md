@@ -2,11 +2,20 @@
 CLI application to play reversi in terminal. 
 
 # How to play
-Install the binary and run.
+Install the binary and run the file.
+
+Single Player mode with 8x8 board. (Change the command according to your platform and version)
 ```
-go run . -n 8
+./go-reversi-0.1-linux-x86
 ```
 
+2 Players mode with 6x6 board
 ```
-go run . -n 4 -p 2
+./go-reversi-0.1-linux-x86 -n 6 -p 2
+```
+
+
+You can watch 2 AIs playing
+```
+./go-reversi-0.1-linux-x86 -p 0
 ```
