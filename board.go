@@ -24,19 +24,18 @@ func (b *Board) init(n int) {
 		panic("Board dimension needs to be more than 2. Even numbers are recommended")
 	}
 
-	middleA := n/2 - 1
-	middleB := n / 2
+	middle := n/2 - 1
 
 	for y := 0; y < n; y++ {
 		cells[y] = make([]State, n)
 		for x := 0; x < n; x++ {
-			if y == middleA && x == middleA {
+			if y == middle && x == middle {
 				cells[y][x] = HasBlack
-			} else if y == middleB && x == middleB {
+			} else if y == middle+1 && x == middle+1 {
 				cells[y][x] = HasBlack
-			} else if y == middleA && x == middleB {
+			} else if y == middle && x == middle+1 {
 				cells[y][x] = HasWhite
-			} else if y == middleB && x == middleA {
+			} else if y == middle+1 && x == middle {
 				cells[y][x] = HasWhite
 			} else {
 				cells[y][x] = HasNothing
@@ -66,28 +65,6 @@ func (b *Board) PlaceByAi() {
 	b.Place()
 }
 
-func (b *Board) getAiPosition() Position {
-	maxCount := 0
-	tmpPosition := Position{0, 0}
-
-	for x := 0; x < b.N; x++ {
-		for y := 0; y < b.N; y++ {
-			if b.Cells[y][x] != HasNothing {
-				continue
-			}
-
-			result := b.GetCellsToFlip(x, y)
-
-			if len(result) > maxCount {
-				maxCount = len(result)
-				tmpPosition.X = x
-				tmpPosition.Y = y
-			}
-		}
-	}
-
-	return tmpPosition
-}
 func (b *Board) Place() error {
 	// validate
 	isValid := b.isCellAvailable()
