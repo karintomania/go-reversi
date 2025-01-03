@@ -1,8 +1,12 @@
+# Go Reversi
+CLI application to play reversi in terminal. 
 
+# How to play
+Install the binary and run.
+```
+go run . -n 8
+```
 
-fmt.Printf("\033[%dA", len(m.MenuItems) -1)
-
-Ref
-https://medium.com/@nexidian/writing-an-interactive-cli-menu-in-golang-d6438b175fb6
-
-https://github.com/Nexidian/gocliselect/blob/main/gocliselect.go
+```
+go run . -n 4 -p 2
+```
