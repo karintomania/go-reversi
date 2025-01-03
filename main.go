@@ -15,8 +15,8 @@ const (
 
 func main() {
 
-	n := flag.Int("n", DEFAULT_N, "Dimension of the board. This needs to be even number. Default: 8")
-	playerNum := flag.Int("p", 1, "1 for 1 Player. 2 for 2 Players. Default: 1")
+	n := flag.Int("n", DEFAULT_N, "Dimension of the board. (Default: 8)")
+	playerNum := flag.Int("p", 1, "1 for Single Play, 2 for 2 Players. (Default: 1)")
 
 	flag.Parse()
 

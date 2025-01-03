@@ -20,8 +20,8 @@ func (b *Board) init(n int) {
 
 	cells := make([][]State, n)
 
-	if n%2 != 0 {
-		panic("Board dimension needs to be even.")
+	if n <= 2 {
+		panic("Board dimension needs to be more than 2. Even numbers are recommended")
 	}
 
 	middleA := n/2 - 1
@@ -62,7 +62,7 @@ func (b *Board) Pass() {
 }
 
 func (b *Board) PlaceByAi() {
-	b.Position = b.getAiPosition()
+	b.Position = getAiPosition(b)
 	b.Place()
 }
 
@@ -88,7 +88,6 @@ func (b *Board) getAiPosition() Position {
 
 	return tmpPosition
 }
-
 func (b *Board) Place() error {
 	// validate
 	isValid := b.isCellAvailable()
@@ -313,7 +312,7 @@ func (b *Board) GetCellsToFlip(x, y int) []CellToFlip {
 	return cells
 }
 
-func (b *Board) Finish() string {
+func (b *Board) Finish() (int, int) {
 	var totalB, totalW int
 
 	for x := 0; x < b.N; x++ {
@@ -326,17 +325,7 @@ func (b *Board) Finish() string {
 		}
 	}
 
-	message := fmt.Sprintf("Black %d, White %d, ", totalB, totalW)
-
-	if totalB > totalW {
-		message += "Black won"
-	} else if totalW > totalB {
-		message += "White won"
-	} else {
-		message += "Draw"
-	}
-
-	return message
+	return totalB, totalW
 }
 
 func (b *Board) FromStringCells(cellsStr [][]string) {

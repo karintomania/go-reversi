@@ -119,8 +119,33 @@ func (g *Game) replay() {
 }
 
 func (g *Game) finish() {
-	g.Message = g.Board.Finish()
+	g.Message = g.generateResultMessage()
+
 	g.State = Finished
+}
+
+func (g *Game) generateResultMessage() string {
+	totalB, totalW := g.Board.Finish()
+	m := fmt.Sprintf("Black: %d, White %d,", totalB, totalW)
+
+	var playerB, playerW Player
+	if g.Player1.Colour == Black {
+		playerB = g.Player1
+		playerW = g.Player2
+	} else {
+		playerB = g.Player2
+		playerW = g.Player1
+	}
+
+	if totalB > totalW {
+		m = fmt.Sprintf("%s %s won", m, playerB.Name)
+	} else if totalB < totalW {
+		m = fmt.Sprintf("%s %s won", m, playerW.Name)
+	} else {
+		m = fmt.Sprintf("%s Draw", m)
+	}
+
+	return m
 }
 
 func (g *Game) pass() {
