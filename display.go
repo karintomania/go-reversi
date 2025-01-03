@@ -41,7 +41,7 @@ func (d *Display) Close() {
 	d.tm.Restore()
 	d.tm.Close()
 }
-func (d *Display) Rendor(b *Board, state GameState) {
+func (d *Display) Rendor(b *Board, state GameState, message string) {
 	p := b.Position
 
 	n := len(b.Cells)
@@ -51,37 +51,51 @@ func (d *Display) Rendor(b *Board, state GameState) {
 		for x := 0; x < n; x++ {
 			s := b.Cells[y][x]
 			if y == p.Y && x == p.X {
-				if s == HasNothing {
-					fmt.Print(" ■")
-				} else if s == HasBlack {
-					fmt.Printf("|%s", BlackString)
-				} else if s == HasWhite {
-					fmt.Printf("|%s", WhiteString)
-				}
+				fmt.Print(getFocusedCellContent(s))
 			} else {
-				if s == HasNothing {
-					fmt.Print(" □")
-				} else if s == HasBlack {
-					fmt.Printf(" %s", BlackString)
-				} else if s == HasWhite {
-					fmt.Printf(" %s", WhiteString)
-				}
+				fmt.Print(getCellContent(s))
 			}
 		}
 		fmt.Print(" ]\n")
 	}
 
+	// print turn if playin
 	if state == Playing {
 		fmt.Printf("\n\rNext: %s", b.Turn)
 	} else {
 		fmt.Print("\n\r\033[K")
 	}
-	fmt.Printf("\n\r\033[K%s\n", b.Message)
 
+	// print message
+	fmt.Printf("\n\r\033[K%s\n", message)
+
+	// print key bindings
 	if state == Playing {
 		fmt.Printf("\r%s", "←↓↑→: a,s,w,d | <space> place | Quit: c")
 	} else {
 		fmt.Printf("\r\033[K%s", "Replay: r | Quit: c")
 	}
+
+	// move curosr up
 	fmt.Printf("\033[%dA\r", n+3)
+}
+
+func getFocusedCellContent(s State) string {
+	if s == HasNothing {
+		return " ■"
+	} else if s == HasBlack {
+		return fmt.Sprintf("|%s", BlackString)
+	} else {
+		return fmt.Sprintf("|%s", WhiteString)
+	}
+}
+
+func getCellContent(s State) string {
+	if s == HasNothing {
+		return " □"
+	} else if s == HasBlack {
+		return fmt.Sprintf(" %s", BlackString)
+	} else {
+		return fmt.Sprintf(" %s", WhiteString)
+	}
 }

@@ -1,24 +1,28 @@
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestGameMovingPosition(t *testing.T) {
 	var b Board
 
-	b.init(2)
+	b.init(4)
 
 	g := NewGame(&b, Human, Human)
 
 	ch := make(chan string)
 
+	// move to playing
+	g.Progress(ch)
+
 	// go left
 	go func() {
 		ch <- "d"
 	}()
-
 	g.Progress(ch)
 
-	if g.Board.Position.X != 1 && g.Board.Position.Y != 0 {
+	if g.Board.Position.X != 1 || g.Board.Position.Y != 0 {
 		t.Errorf("got %v, but want %v", g.Board.Position, Position{1, 0})
 	}
 
@@ -26,10 +30,9 @@ func TestGameMovingPosition(t *testing.T) {
 	go func() {
 		ch <- "a"
 	}()
-
 	g.Progress(ch)
 
-	if g.Board.Position.X != 0 && g.Board.Position.Y != 0 {
+	if g.Board.Position.X != 0 || g.Board.Position.Y != 0 {
 		t.Errorf("got %v, but want %v", g.Board.Position, Position{0, 0})
 	}
 
@@ -37,10 +40,9 @@ func TestGameMovingPosition(t *testing.T) {
 	go func() {
 		ch <- "s"
 	}()
-
 	g.Progress(ch)
 
-	if g.Board.Position.X != 0 && g.Board.Position.Y != 1 {
+	if g.Board.Position.X != 0 || g.Board.Position.Y != 1 {
 		t.Errorf("got %v, but want %v", g.Board.Position, Position{0, 1})
 	}
 
@@ -48,10 +50,9 @@ func TestGameMovingPosition(t *testing.T) {
 	go func() {
 		ch <- "w"
 	}()
-
 	g.Progress(ch)
 
-	if g.Board.Position.X != 0 && g.Board.Position.Y != 0 {
+	if g.Board.Position.X != 0 || g.Board.Position.Y != 0 {
 		t.Errorf("got %v, but want %v", g.Board.Position, Position{0, 0})
 	}
 }
@@ -73,6 +74,8 @@ func TestPassAndFinishGame(t *testing.T) {
 	g := NewGame(&b, Human, Human)
 
 	ch := make(chan string)
+	// move to playing
+	g.Progress(ch)
 
 	// place black
 	go func() {
@@ -91,7 +94,7 @@ func TestPassAndFinishGame(t *testing.T) {
 			b.Cells[0][1],
 			b.Cells[0][2],
 			b.Turn,
-			b.Message,
+			g.Message,
 		)
 	}
 
@@ -101,8 +104,8 @@ func TestPassAndFinishGame(t *testing.T) {
 	if g.passCount != 1 || b.Turn != Black {
 		t.Errorf("want 1, got %d, %v", g.passCount, b.Turn)
 	}
-	if b.Message != "Skipped ●" {
-		t.Errorf("want 'Skipped ●', got %s", b.Message)
+	if g.Message != "Skipped ●" {
+		t.Errorf("want 'Skipped ●', got %s", g.Message)
 	}
 
 	// pass Black
@@ -112,8 +115,8 @@ func TestPassAndFinishGame(t *testing.T) {
 		t.Errorf("want 2, got %d, %v", g.passCount, b.Turn)
 	}
 
-	if b.Message != "Skipped ○" {
-		t.Errorf("want 'Skipped ○', got %s", b.Message)
+	if g.Message != "Skipped ○" {
+		t.Errorf("want 'Skipped ○', got %s", g.Message)
 	}
 
 	// Finish game
@@ -121,5 +124,100 @@ func TestPassAndFinishGame(t *testing.T) {
 
 	if g.State != Finished {
 		t.Errorf("want Finished, got %v", g.State)
+	}
+}
+
+func TestRetry(t *testing.T) {
+	var b Board
+
+	b.init(2)
+
+	g := NewGame(&b, Human, AI)
+
+	ch := make(chan string)
+
+	// move to playing
+	g.Progress(ch)
+
+	// pass black
+	g.Progress(ch)
+
+	// pass white
+	g.Progress(ch)
+
+	// finish game
+	g.Progress(ch)
+
+	if g.passCount != 2 || g.State != Finished {
+		t.Errorf("needs to be finished, got %d, %v", g.passCount, g.State)
+	}
+
+	// press retry
+	go func() {
+		ch <- "r"
+	}()
+
+	g.Progress(ch)
+
+	if g.passCount != 0 || g.State != Initialized {
+		t.Errorf("needs to be restarted, got %d, %s", g.passCount, g.State)
+	}
+
+	if g.Player1.Type != Human ||
+		g.Player1.Colour != White ||
+		g.Player2.Type != AI ||
+		g.Player2.Colour != Black {
+		t.Errorf(
+			"Player Type needs to be swapped after replay. %v, %v",
+			g.Player2.Type,
+			g.Player1.Type,
+		)
+	}
+}
+
+func TestAIPlayer(t *testing.T) {
+	var b Board
+
+	b.init(4)
+
+	b.FromStringCells(
+		[][]string{
+			{"n", "w", "b", "w"},
+			{"n", "b", "w", "w"},
+			{"w", "w", "w", "w"},
+			{"w", "w", "w", "w"},
+		},
+	)
+
+	g := NewGame(&b, AI, AI)
+
+	ch := make(chan string)
+	// move to playing
+	g.Progress(ch)
+
+	// place black
+	g.Progress(ch)
+
+	if b.Cells[0][0] != HasBlack ||
+		b.Cells[0][1] != HasBlack ||
+		b.Turn != White {
+		t.Errorf("got %v, %v, %v",
+			b.Cells[0][0],
+			b.Cells[0][1],
+			b.Turn,
+		)
+	}
+
+	// place white
+	g.Progress(ch)
+
+	if b.Cells[1][0] != HasWhite ||
+		b.Cells[1][1] != HasWhite ||
+		b.Turn != Black {
+		t.Errorf("got %v, %v, %v",
+			b.Cells[1][0],
+			b.Cells[1][1],
+			b.Turn,
+		)
 	}
 }

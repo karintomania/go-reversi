@@ -1,19 +1,28 @@
 package main
 
-import "fmt"
+import (
+	"flag"
+	"fmt"
+)
 
 var _ string = fmt.Sprint("test")
 
 const (
-	MAX         = 4
+	DEFAULT_N   = 8
 	BlackString = "○"
 	WhiteString = "●"
 )
 
 func main() {
+
+	n := flag.Int("n", DEFAULT_N, "Dimension of the board. This needs to be even number. Default: 8")
+	playerNum := flag.Int("p", 1, "1 for 1 Player. 2 for 2 Players. Default: 1")
+
+	flag.Parse()
+
 	var b Board
 
-	b.init(MAX)
+	b.init(*n)
 
 	d := NewDisplay()
 	defer d.Close()
@@ -27,13 +36,28 @@ func main() {
 		}
 	}()
 
-	g := NewGame(&b, Human, Human)
+	var bPlayerType, wPlayerType PlayerType
+	switch *playerNum {
+	case 2: // 2 players
+		bPlayerType = Human
+		wPlayerType = Human
 
-	d.Rendor(g.Board, g.State)
+	case 0: // mainly for debugging
+		bPlayerType = AI
+		wPlayerType = AI
+
+	default: // 1 player
+		bPlayerType = Human
+		wPlayerType = AI
+	}
+
+	g := NewGame(&b, bPlayerType, wPlayerType)
+
+	d.Rendor(g.Board, g.State, g.Message)
 
 	for g.State != Quit {
 		g.Progress(input)
-		d.Rendor(g.Board, g.State)
+		d.Rendor(g.Board, g.State, g.Message)
 	}
 
 }

@@ -8,7 +8,6 @@ type Board struct {
 	N        int
 	Cells    [][]State
 	Turn     Turn
-	Message  string
 	Position Position
 }
 
@@ -22,7 +21,7 @@ func (b *Board) init(n int) {
 	cells := make([][]State, n)
 
 	if n%2 != 0 {
-		panic("MAX needs to be even.")
+		panic("Board dimension needs to be even.")
 	}
 
 	middleA := n/2 - 1
@@ -57,7 +56,6 @@ func (b *Board) SwitchTurn() {
 }
 
 func (b *Board) Pass() {
-	b.Message = fmt.Sprintf("Skipped %s", b.Turn.String())
 	// switch turn
 	b.SwitchTurn()
 
@@ -91,21 +89,19 @@ func (b *Board) getAiPosition() Position {
 	return tmpPosition
 }
 
-func (b *Board) Place() {
+func (b *Board) Place() error {
 	// validate
 	isValid := b.isCellAvailable()
 
 	if !isValid {
-		b.Message = "You can't place there."
-		return
+		return fmt.Errorf("You can't place there.")
 	}
 
 	// get cells to flip
 	cellsToFlip := b.GetCellsToFlip(b.Position.X, b.Position.Y)
 
 	if len(cellsToFlip) == 0 {
-		b.Message = "You can't place there."
-		return
+		return fmt.Errorf("You can't place there.")
 	}
 
 	for _, cell := range cellsToFlip {
@@ -122,6 +118,8 @@ func (b *Board) Place() {
 
 	// switch turn
 	b.SwitchTurn()
+
+	return nil
 }
 
 func (b *Board) HasPlayableCells() bool {
@@ -315,7 +313,7 @@ func (b *Board) GetCellsToFlip(x, y int) []CellToFlip {
 	return cells
 }
 
-func (b *Board) Finish() {
+func (b *Board) Finish() string {
 	var totalB, totalW int
 
 	for x := 0; x < b.N; x++ {
@@ -332,13 +330,13 @@ func (b *Board) Finish() {
 
 	if totalB > totalW {
 		message += "Black won"
-	} else if totalB > totalW {
+	} else if totalW > totalB {
 		message += "White won"
 	} else {
 		message += "Draw"
 	}
 
-	b.Message = message
+	return message
 }
 
 func (b *Board) FromStringCells(cellsStr [][]string) {
