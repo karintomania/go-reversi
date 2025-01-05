@@ -55,8 +55,10 @@ func (d *Display) Close() {
 	d.tm.Restore()
 	d.tm.Close()
 }
-func (d *Display) Rendor(b *Board, state GameState, message string) {
-	p := b.Position
+func (d *Display) Rendor(g *Game, p Position) {
+	b := g.Board
+	state := g.State
+	message := g.Message
 
 	n := len(b.Cells)
 

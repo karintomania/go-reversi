@@ -54,67 +54,77 @@ func NewGame(b *Board, type1, type2 PlayerType) Game {
 		0}
 }
 
-func (g *Game) Progress(in <-chan string) {
+func (g *Game) Start() (chan GameCommand, chan Game) {
+	in := make(chan GameCommand)
+	out := make(chan Game)
+
 	b := g.Board
 
-	if g.State == Initialized {
-		g.Message = g.getPlayerTypesMessage()
-		g.State = Playing
-		return
-	}
-
-	if g.State == Playing {
-		if g.passCount >= 2 {
-			g.finish()
-			return
-		}
-
-		if !b.HasPlayableCells() {
-			g.pass()
-			return
-		}
-
-		// AI player
-		if g.getCurrentPlayer().Type == AI {
-			b.PlaceByAi()
-			return
-		}
-
-		char := <-in
-
-		switch char {
-		// move position
-		case "h", "a": // ←
-			b.MovePositionX(-1)
-		case "l", "d": // →
-			b.MovePositionX(1)
-		case "j", "s": // ↓
-			b.MovePositionY(1)
-		case "k", "w": // ↑
-			b.MovePositionY(-1)
-
-		// place
-		case " ":
-			err := b.Place()
-			if err != nil {
-				g.Message = fmt.Sprintf("%s", err)
+	go func() {
+	gameLoop:
+		for {
+			if g.State == Initialized {
+				g.Message = g.getPlayerTypesMessage()
+				g.State = Playing
+				out <- *g
+				continue gameLoop
 			}
-		// quit
-		case "c":
-			g.State = Quit
-		}
-	}
 
-	if g.State == Finished {
-		char := <-in
+			if g.State == Playing {
+				if g.passCount >= 2 {
+					g.finish()
+					out <- *g
+					continue gameLoop
+				}
 
-		switch char {
-		case "r":
-			g.replay()
-		case "c": // quit
-			g.State = Quit
-			return
+				if !b.HasPlayableCells() {
+					g.pass()
+					out <- *g
+					continue gameLoop
+				}
+
+				// AI player
+				if g.getCurrentPlayer().Type == AI {
+					b.PlaceByAi()
+					out <- *g
+					continue gameLoop
+				}
+
+				cmd := <-in
+
+				switch cmd.CommandType {
+				// place
+				case CommandPlace:
+					g.Place(cmd.Position)
+				// quit
+				case CommandQuit:
+					g.State = Quit
+				}
+
+				out <- *g
+			}
+
+			if g.State == Finished {
+				cmd := <-in
+
+				switch cmd.CommandType {
+				case CommandReplay:
+					g.replay()
+				case CommandQuit:
+					g.State = Quit
+				}
+				out <- *g
+			}
 		}
+	}()
+
+	return in, out
+}
+
+func (g *Game) Place(p Position) {
+	err := g.Board.Place(p)
+	if err != nil {
+		g.Message = fmt.Sprintf("%s", err)
 	}
 }
 
@@ -216,4 +226,17 @@ func GetPlayerTypeFromString(s string) PlayerType {
 		return AI
 	}
 	return Human
+}
+
+type CommandType int
+
+const (
+	CommandPlace CommandType = iota
+	CommandReplay
+	CommandQuit
+)
+
+type GameCommand struct {
+	CommandType CommandType
+	Position    Position
 }

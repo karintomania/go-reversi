@@ -51,11 +51,16 @@ func main() {
 
 	g := NewGame(&b, bPlayerType, wPlayerType)
 
-	d.Rendor(g.Board, g.State, g.Message)
+	gameCmdCh, gameCh := g.Start()
 
-	for g.State != Quit {
-		g.Progress(input)
-		d.Rendor(g.Board, g.State, g.Message)
+	cli := Client{
+		stdin:     input,
+		gameCh:    gameCh,
+		gameCmdCh: gameCmdCh,
+		d:         &d,
+		p:         &Position{},
 	}
+
+	cli.Run()
 
 }

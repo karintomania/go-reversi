@@ -5,18 +5,15 @@ import (
 )
 
 type Board struct {
-	N        int
-	Cells    [][]State
-	Turn     Turn
-	Position Position
+	N     int
+	Cells [][]State
+	Turn  Turn
 }
 
 func (b *Board) init(n int) {
 	b.N = n
 
 	b.Turn = Black
-
-	b.Position = Position{0, 0}
 
 	cells := make([][]State, n)
 
@@ -61,19 +58,19 @@ func (b *Board) Pass() {
 }
 
 func (b *Board) PlaceByAi() {
-	b.Position = getAiPosition(b)
-	b.Place()
+	p := getAiPosition(b)
+	b.Place(p)
 }
 
-func (b *Board) Place() error {
+func (b *Board) Place(p Position) error {
 	// check if the cell is taken
-	isValid := b.isCellTaken()
+	isValid := b.isCellTaken(p)
 	if !isValid {
 		return fmt.Errorf("You can't place there.")
 	}
 
 	// get cells to flip
-	cellsToFlip := b.GetCellsToFlip(b.Position.X, b.Position.Y)
+	cellsToFlip := b.GetCellsToFlip(p.X, p.Y)
 
 	// error if no cells to flip
 	if len(cellsToFlip) == 0 {
@@ -85,7 +82,6 @@ func (b *Board) Place() error {
 	}
 
 	// Place stone
-	p := b.Position
 	if b.Turn == Black {
 		b.Cells[p.Y][p.X] = HasBlack
 	} else {
@@ -116,17 +112,9 @@ func (b *Board) HasPlayableCells() bool {
 	return false
 }
 
-func (b *Board) isCellTaken() bool {
-	state := b.Cells[b.Position.Y][b.Position.X]
+func (b *Board) isCellTaken(p Position) bool {
+	state := b.Cells[p.Y][p.X]
 	return state == HasNothing
-}
-
-func (b *Board) MovePositionX(n int) {
-	b.Position.addX(n, b.N)
-}
-
-func (b *Board) MovePositionY(n int) {
-	b.Position.addY(n, b.N)
 }
 
 func (b *Board) GetCellsToFlip(x, y int) []CellToFlip {
