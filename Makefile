@@ -28,3 +28,10 @@ clean:
 	@echo "Cleaning up binaries..."
 	rm -rf $(OUTPUT_DIR)/*
 	touch $(OUTPUT_DIR)/.gitkeep
+
+# You have to login with
+# echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u karintomania --password-stdin
+publish:
+	docker build -t go-reversi --build-arg VERSION=$(VERSION) . 
+	docker tag go-reversi ghcr.io/karintomania/go-reversi:latest
+	docker push ghcr.io/karintomania/go-reversi:latest
