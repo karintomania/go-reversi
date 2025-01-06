@@ -65,10 +65,6 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 	player2Out := make(chan Game)
 
 	go func() {
-		syncGame := func() {
-			player1Out <- *g
-			player2Out <- *g
-		}
 
 	gameLoop:
 		for {
@@ -113,7 +109,8 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 				break gameLoop
 			}
 
-			syncGame()
+			player1Out <- *g
+			player2Out <- *g
 		}
 	}()
 

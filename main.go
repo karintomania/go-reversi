@@ -28,7 +28,6 @@ func main() {
 }
 
 func startLocalSingleGame(n int) {
-
 	var b Board
 
 	b.init(n)

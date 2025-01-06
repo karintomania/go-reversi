@@ -2,47 +2,37 @@ package main
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsCellTaken(t *testing.T) {
-	type input struct {
-		X     int
-		Y     int
-		State State
-	}
-
 	cases := []struct {
-		Input input
+		Input Position
 		Want  bool
 	}{
-		{input{1, 1, HasNothing}, true},
-		{input{1, 1, HasWhite}, false},
-		{input{1, 1, HasBlack}, false},
+		{Position{0, 0}, true},
+		{Position{1, 1}, false},
+		{Position{2, 2}, false},
 	}
 
 	for _, c := range cases {
-		input := c.Input
 		want := c.Want
 		b := Board{}
 
-		b.init(4)
+		b.init(3)
 
 		b.FromStringCells(
 			[][]string{
-				{"w", "w", "w", "w"},
-				{"w", "w", "w", "w"},
-				{"w", "w", "w", "w"},
-				{"w", "w", "w", "w"},
+				{"n", "n", "n"},
+				{"b", "b", "b"},
+				{"w", "w", "w"},
 			},
 		)
 
-		b.Cells[input.X][input.Y] = input.State
-		b.Position = Position{input.X, input.Y}
-		got := b.isCellTaken()
+		got := b.isCellTaken(c.Input)
 
-		if got != want {
-			t.Errorf("want %v, got %v", want, got)
-		}
+		assert.Equal(t, want, got)
 	}
 }
 

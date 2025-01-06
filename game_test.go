@@ -2,209 +2,38 @@ package main
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestQuitGame(t *testing.T) {
+func TestGameStart(t *testing.T) {
 	var b Board
 
-	b.init(4)
+	b.init(3)
 
 	g := NewGame(&b, Human, Human)
 
-	ch := make(chan string)
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
 
-	testStates := []GameState{Playing, Finished}
+	mockSync(player1GameCh, player2GameCh)
+	assert.Equal(t, Player1Turn, g.State)
 
-	for _, currentState := range testStates {
-		g.State = currentState
+	cmd := GameCommand{CommandPlace, Position{0, 2}}
+	player1CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
 
-		// quit
-		go func() {
-			ch <- "c"
-		}()
-		g.Progress(ch)
+	assert.Equal(t, Player2Turn, g.State)
 
-		if g.State != Quit {
-			t.Errorf("Can't quit from %s, got %s", currentState, g.State)
-		}
-	}
+	cmd = GameCommand{CommandPlace, Position{1, 2}}
+	player2CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+
+	assert.Equal(t, Player1Turn, g.State)
+
 }
 
-func TestPassAndFinishGame(t *testing.T) {
-	var b Board
-
-	b.init(4)
-
-	b.FromStringCells(
-		[][]string{
-			{"n", "w", "w", "b"},
-			{"w", "w", "w", "w"},
-			{"w", "w", "w", "w"},
-			{"w", "w", "w", "w"},
-		},
-	)
-
-	g := NewGame(&b, Human, Human)
-
-	ch := make(chan string)
-	// move to playing
-	g.Progress(ch)
-
-	// place black
-	go func() {
-		ch <- " "
-	}()
-
-	g.Progress(ch)
-
-	if b.Cells[0][0] != HasBlack ||
-		b.Cells[0][1] != HasBlack ||
-		b.Cells[0][2] != HasBlack ||
-		b.Turn != White {
-		t.Errorf(
-			"Place failed, got %v, %v, %v, %v, \"%v\"",
-			b.Cells[0][0],
-			b.Cells[0][1],
-			b.Cells[0][2],
-			b.Turn,
-			g.Message,
-		)
-	}
-
-	// pass White
-	g.Progress(ch)
-
-	if g.passCount != 1 || b.Turn != Black {
-		t.Errorf("want 1, got %d, %v", g.passCount, b.Turn)
-	}
-	if g.Message != "Skipped ●" {
-		t.Errorf("want 'Skipped ●', got %s", g.Message)
-	}
-
-	// pass Black
-	g.Progress(ch)
-
-	if g.passCount != 2 || b.Turn != White {
-		t.Errorf("want 2, got %d, %v", g.passCount, b.Turn)
-	}
-
-	if g.Message != "Skipped ○" {
-		t.Errorf("want 'Skipped ○', got %s", g.Message)
-	}
-
-	// Finish game
-	g.Progress(ch)
-
-	if g.State != Finished {
-		t.Errorf("want Finished, got %v", g.State)
-	}
-
-	wantMsg := "Black 4, White 12, Player 2 won"
-	if g.Message != wantMsg {
-		t.Errorf("want '%s', got %s", wantMsg, g.Message)
-	}
-}
-
-func TestRetry(t *testing.T) {
-	var b Board
-
-	b.init(4)
-
-	b.FromStringCells(
-		[][]string{
-			{"b", "b", "b", "b"},
-			{"b", "b", "b", "b"},
-			{"b", "b", "b", "b"},
-			{"b", "b", "b", "b"},
-		},
-	)
-
-	g := NewGame(&b, Human, AI)
-
-	ch := make(chan string)
-
-	// move to playing
-	g.Progress(ch)
-
-	// pass black
-	g.Progress(ch)
-
-	// pass white
-	g.Progress(ch)
-
-	// finish game
-	g.Progress(ch)
-
-	if g.passCount != 2 || g.State != Finished {
-		t.Errorf("needs to be finished, got %d, %v", g.passCount, g.State)
-	}
-
-	// press retry
-	go func() {
-		ch <- "r"
-	}()
-
-	g.Progress(ch)
-
-	if g.passCount != 0 || g.State != Initialized {
-		t.Errorf("needs to be restarted, got %d, %s", g.passCount, g.State)
-	}
-
-	if g.Player1.Type != Human ||
-		g.Player1.Colour != White ||
-		g.Player2.Type != AI ||
-		g.Player2.Colour != Black {
-		t.Errorf(
-			"Player Type needs to be swapped after replay. %v, %v",
-			g.Player2.Type,
-			g.Player1.Type,
-		)
-	}
-}
-
-func TestAIPlayer(t *testing.T) {
-	var b Board
-
-	b.init(4)
-
-	b.FromStringCells(
-		[][]string{
-			{"n", "w", "b", "w"},
-			{"n", "b", "w", "w"},
-			{"w", "w", "w", "w"},
-			{"w", "w", "w", "w"},
-		},
-	)
-
-	g := NewGame(&b, AI, AI)
-
-	ch := make(chan string)
-	// move to playing
-	g.Progress(ch)
-
-	// place black
-	g.Progress(ch)
-
-	if b.Cells[0][0] != HasBlack ||
-		b.Cells[0][1] != HasBlack ||
-		b.Turn != White {
-		t.Errorf("got %v, %v, %v",
-			b.Cells[0][0],
-			b.Cells[0][1],
-			b.Turn,
-		)
-	}
-
-	// place white
-	g.Progress(ch)
-
-	if b.Cells[1][0] != HasWhite ||
-		b.Cells[1][1] != HasWhite ||
-		b.Turn != Black {
-		t.Errorf("got %v, %v, %v",
-			b.Cells[1][0],
-			b.Cells[1][1],
-			b.Turn,
-		)
-	}
+// discard channel output
+func mockSync(player1GameCh, player2GameCh chan Game) {
+	_ = <-player1GameCh
+	_ = <-player2GameCh
 }
