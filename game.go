@@ -36,7 +36,6 @@ type Game struct {
 	Player2      Player
 	Message      string
 	DebugMessage string
-	passCount    int
 }
 
 func NewGame(b *Board, type1, type2 PlayerType) Game {
@@ -56,7 +55,7 @@ func NewGame(b *Board, type1, type2 PlayerType) Game {
 		Player{name2, type2, White},
 		"",
 		"",
-		0}
+	}
 }
 
 func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game) {
@@ -65,80 +64,83 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 	player1Out := make(chan Game)
 	player2Out := make(chan Game)
 
-	b := g.Board
-
 	go func() {
+		syncGame := func() {
+			player1Out <- *g
+			player2Out <- *g
+		}
 	gameLoop:
 		for {
-			if g.State == Initialized {
+			switch g.State {
+			case Initialized:
 				g.Message = g.getPlayerTypesMessage()
 				g.updateTurnFromBoard()
-				g.DebugMessage = fmt.Sprintf("init with state: %s", g.State)
-				continue gameLoop
-			}
 
-			if g.State == Player1Turn || g.State == Player2Turn {
-				if g.passCount >= 2 {
-					g.finish()
-					player1Out <- *g
-					player2Out <- *g
-					continue gameLoop
-				}
-
-				if b.HasPlayableCells() {
-					g.updateTurnFromBoard()
-					player1Out <- *g
-					player2Out <- *g
-				} else {
-					g.pass()
-					continue gameLoop
-				}
-
+			case Player1Turn, Player2Turn:
+				// waiting for players' input
 				var cmd GameCommand
 				if g.State == Player1Turn {
-					g.DebugMessage = fmt.Sprint("waiting for 1")
 					cmd = <-player1Cmd
 				} else {
-					g.DebugMessage = fmt.Sprint("waiting for 2")
 					cmd = <-player2Cmd
 				}
 
 				switch cmd.CommandType {
 				// place
 				case CommandPlace:
-					g.Place(cmd.Position)
-					// quit
+					g.place(cmd.Position)
 				case CommandQuit:
 					g.State = Quit
-					player1Out <- *g
-					player2Out <- *g
-					break gameLoop
 				}
-			}
 
-			if g.State == Finished {
-				cmd := <-player1Cmd
+			case Finished:
+				// wait for input
+				var cmd GameCommand
+				select {
+				case cmd = <-player1Cmd:
+				case cmd = <-player2Cmd:
+				}
 
 				switch cmd.CommandType {
 				case CommandReplay:
 					g.replay()
 				case CommandQuit:
 					g.State = Quit
-					break gameLoop
 				}
-				player1Out <- *g
-				player2Out <- *g
+
+			case Quit:
+				syncGame()
+				break gameLoop
 			}
+
+			syncGame()
 		}
 	}()
 
 	return player1Cmd, player2Cmd, player1Out, player2Out
 }
 
-func (g *Game) Place(p Position) {
-	err := g.Board.Place(p)
+func (g *Game) place(p Position) {
+	b := g.Board
+
+	err := b.Place(p)
 	if err != nil {
 		g.Message = fmt.Sprintf("%s", err)
+		return
+	}
+
+	// deal with pass
+	passedCount := 0
+	for !b.HasPlayableCells() && passedCount <= 2 {
+		g.pass()
+
+		passedCount++
+	}
+
+	if passedCount >= 2 {
+		g.finish()
+	} else if b.HasPlayableCells() {
+		g.updateTurnFromBoard()
 	}
 }
 
@@ -155,7 +157,6 @@ func (g *Game) replay() {
 	g.Player1.Colour, g.Player2.Colour = g.Player2.Colour, g.Player1.Colour
 
 	g.Board.init(g.Board.N)
-	g.passCount = 0
 
 	g.State = Initialized
 }
@@ -192,7 +193,6 @@ func (g *Game) generateResultMessage() string {
 
 func (g *Game) pass() {
 	g.Message = fmt.Sprintf("Skipped %s", g.Board.Turn.String())
-	g.passCount++
 	g.Board.Pass()
 }
 

@@ -1,5 +1,9 @@
 package main
 
+import "time"
+
+var _ = time.Second //TODO: debugging
+
 type Client struct {
 	stdin     chan string
 	gameCh    chan Game
@@ -10,16 +14,10 @@ type Client struct {
 
 func (c *Client) Run() {
 	// init game
-	g := <-c.gameCh
+	var g Game
 
-	c.d.Rendor(&g, *c.p)
-
-clientLoop:
-	for {
-		select {
-		case char := <-c.stdin:
-			//
-
+	go func() {
+		for char := range c.stdin {
 			if g.State == Player1Turn {
 				switch char {
 				// move position
@@ -54,13 +52,16 @@ clientLoop:
 				}
 			}
 			c.d.Rendor(&g, *c.p)
-		case g = <-c.gameCh:
-			if g.State == Quit {
-				break clientLoop
-			}
-
-			c.d.Rendor(&g, *c.p)
 		}
+	}()
+
+clientLoop:
+	for g = range c.gameCh {
+		if g.State == Quit {
+			break clientLoop
+		}
+
+		c.d.Rendor(&g, *c.p)
 	}
 }
 
@@ -78,6 +79,7 @@ AiClientLoop:
 		if g.State == Player2Turn {
 			p := getAiPosition(g.Board)
 			cmd := GameCommand{CommandPlace, p}
+			// time.Sleep(5 * time.Second)
 			c.gameCmdCh <- cmd
 		}
 
