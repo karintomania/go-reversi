@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"sync"
 )
 
 var _ string = fmt.Sprint("test")
 
 const (
-	DEFAULT_N = 8
+	DEFAULT_N = 3
 )
 
 func main() {
@@ -51,16 +52,42 @@ func main() {
 
 	g := NewGame(&b, bPlayerType, wPlayerType)
 
-	gameCmdCh, gameCh := g.Start()
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
 
-	cli := Client{
+	cli1 := Client{
 		stdin:     input,
-		gameCh:    gameCh,
-		gameCmdCh: gameCmdCh,
+		gameCh:    player1GameCh,
+		gameCmdCh: player1CmdCh,
 		d:         &d,
 		p:         &Position{},
 	}
 
-	cli.Run()
+	cli2 := AiClient{
+		stdin:     nil,
+		gameCh:    player2GameCh,
+		gameCmdCh: player2CmdCh,
+		d:         nil,
+		p:         &Position{},
+	}
 
+	var wg sync.WaitGroup
+	// finish if one of the players quit
+	wg.Add(2)
+
+	go func() {
+		cli1.Run()
+		wg.Done()
+	}()
+
+	go func() {
+		cli2.Run()
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	close(player1CmdCh)
+	close(player2CmdCh)
+	close(player1GameCh)
+	close(player2GameCh)
 }

@@ -20,8 +20,7 @@ clientLoop:
 		case char := <-c.stdin:
 			//
 
-			if g.State == Playing {
-
+			if g.State == Player1Turn {
 				switch char {
 				// move position
 				case "h", "a": // ←
@@ -41,7 +40,6 @@ clientLoop:
 				case "c":
 					cmd := GameCommand{CommandType: CommandQuit}
 					c.gameCmdCh <- cmd
-					break clientLoop
 				}
 			}
 
@@ -53,12 +51,38 @@ clientLoop:
 				case "c": // quit
 					cmd := GameCommand{CommandType: CommandQuit}
 					c.gameCmdCh <- cmd
-					break clientLoop
 				}
 			}
 			c.d.Rendor(&g, *c.p)
 		case g = <-c.gameCh:
+			if g.State == Quit {
+				break clientLoop
+			}
+
 			c.d.Rendor(&g, *c.p)
+		}
+	}
+}
+
+type AiClient struct {
+	stdin     chan string
+	gameCh    chan Game
+	gameCmdCh chan GameCommand
+	d         *Display
+	p         *Position
+}
+
+func (c *AiClient) Run() {
+AiClientLoop:
+	for g := range c.gameCh {
+		if g.State == Player2Turn {
+			p := getAiPosition(g.Board)
+			cmd := GameCommand{CommandPlace, p}
+			c.gameCmdCh <- cmd
+		}
+
+		if g.State == Quit {
+			break AiClientLoop
 		}
 	}
 }

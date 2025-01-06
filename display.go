@@ -58,7 +58,6 @@ func (d *Display) Close() {
 func (d *Display) Rendor(g *Game, p Position) {
 	b := g.Board
 	state := g.State
-	message := g.Message
 
 	n := len(b.Cells)
 
@@ -78,25 +77,27 @@ func (d *Display) Rendor(g *Game, p Position) {
 
 	// print turn if playing
 	print("")
-	if state == Playing {
+	if state == Player1Turn || state == Player2Turn {
 		print(fmt.Sprintf("[Turn] %s", b.Turn))
 	} else {
 		print("[Turn] -")
 	}
 
 	// print message
-	print(fmt.Sprintf("[Message] %s", message))
+	print(fmt.Sprintf("[Message] %s", g.Message))
+	// print debug message
+	print(fmt.Sprintf("[Debug] %s", g.DebugMessage))
 
 	// print key bindings
 	print("")
-	if state == Playing {
+	if state == Player1Turn || state == Player2Turn {
 		print("[Keys] ←↓↑→: a,s,w,d | Place: <space> | Quit: c")
 	} else {
 		print("[Keys] Play Again: r | Quit: c")
 	}
 
 	// move curosr up
-	fmt.Printf("\033[%dA\r", n+5)
+	fmt.Printf("\033[%dA\r", n+6)
 }
 
 func printWithSpacer(s string) {

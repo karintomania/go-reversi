@@ -6,7 +6,8 @@ type GameState int
 
 const (
 	Initialized GameState = iota
-	Playing
+	Player1Turn
+	Player2Turn
 	Finished
 	Quit
 )
@@ -15,8 +16,10 @@ func (gs GameState) String() string {
 	switch gs {
 	case Initialized:
 		return "Initialized"
-	case Playing:
-		return "Playing"
+	case Player1Turn:
+		return "Player1Turn"
+	case Player2Turn:
+		return "Player2Turn"
 	case Finished:
 		return "Finished"
 	case Quit:
@@ -27,12 +30,13 @@ func (gs GameState) String() string {
 }
 
 type Game struct {
-	Board     *Board
-	State     GameState
-	Player1   Player
-	Player2   Player
-	Message   string
-	passCount int
+	Board        *Board
+	State        GameState
+	Player1      Player
+	Player2      Player
+	Message      string
+	DebugMessage string
+	passCount    int
 }
 
 func NewGame(b *Board, type1, type2 PlayerType) Game {
@@ -51,12 +55,15 @@ func NewGame(b *Board, type1, type2 PlayerType) Game {
 		Player{name1, type1, Black},
 		Player{name2, type2, White},
 		"",
+		"",
 		0}
 }
 
-func (g *Game) Start() (chan GameCommand, chan Game) {
-	in := make(chan GameCommand)
-	out := make(chan Game)
+func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game) {
+	player1Cmd := make(chan GameCommand)
+	player2Cmd := make(chan GameCommand)
+	player1Out := make(chan Game)
+	player2Out := make(chan Game)
 
 	b := g.Board
 
@@ -65,60 +72,67 @@ func (g *Game) Start() (chan GameCommand, chan Game) {
 		for {
 			if g.State == Initialized {
 				g.Message = g.getPlayerTypesMessage()
-				g.State = Playing
-				out <- *g
+				g.updateTurnFromBoard()
+				g.DebugMessage = fmt.Sprintf("init with state: %s", g.State)
 				continue gameLoop
 			}
 
-			if g.State == Playing {
+			if g.State == Player1Turn || g.State == Player2Turn {
 				if g.passCount >= 2 {
 					g.finish()
-					out <- *g
+					player1Out <- *g
+					player2Out <- *g
 					continue gameLoop
 				}
 
-				if !b.HasPlayableCells() {
+				if b.HasPlayableCells() {
+					g.updateTurnFromBoard()
+					player1Out <- *g
+					player2Out <- *g
+				} else {
 					g.pass()
-					out <- *g
 					continue gameLoop
 				}
 
-				// AI player
-				if g.getCurrentPlayer().Type == AI {
-					b.PlaceByAi()
-					out <- *g
-					continue gameLoop
+				var cmd GameCommand
+				if g.State == Player1Turn {
+					g.DebugMessage = fmt.Sprint("waiting for 1")
+					cmd = <-player1Cmd
+				} else {
+					g.DebugMessage = fmt.Sprint("waiting for 2")
+					cmd = <-player2Cmd
 				}
-
-				cmd := <-in
 
 				switch cmd.CommandType {
 				// place
 				case CommandPlace:
 					g.Place(cmd.Position)
-				// quit
+					// quit
 				case CommandQuit:
 					g.State = Quit
+					player1Out <- *g
+					player2Out <- *g
+					break gameLoop
 				}
-
-				out <- *g
 			}
 
 			if g.State == Finished {
-				cmd := <-in
+				cmd := <-player1Cmd
 
 				switch cmd.CommandType {
 				case CommandReplay:
 					g.replay()
 				case CommandQuit:
 					g.State = Quit
+					break gameLoop
 				}
-				out <- *g
+				player1Out <- *g
+				player2Out <- *g
 			}
 		}
 	}()
 
-	return in, out
+	return player1Cmd, player2Cmd, player1Out, player2Out
 }
 
 func (g *Game) Place(p Position) {
@@ -128,12 +142,21 @@ func (g *Game) Place(p Position) {
 	}
 }
 
+func (g *Game) updateTurnFromBoard() {
+	if g.Board.Turn == g.Player1.Colour {
+		g.State = Player1Turn
+	} else {
+		g.State = Player2Turn
+	}
+}
+
 func (g *Game) replay() {
 	// swap player colour
 	g.Player1.Colour, g.Player2.Colour = g.Player2.Colour, g.Player1.Colour
 
 	g.Board.init(g.Board.N)
 	g.passCount = 0
+
 	g.State = Initialized
 }
 
