@@ -69,6 +69,7 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 			player1Out <- *g
 			player2Out <- *g
 		}
+
 	gameLoop:
 		for {
 			switch g.State {
@@ -109,7 +110,6 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 				}
 
 			case Quit:
-				syncGame()
 				break gameLoop
 			}
 
@@ -206,6 +206,14 @@ func (g *Game) getCurrentPlayer() Player {
 	}
 }
 
+func (g *Game) IsMyTurn(id PlayerId) bool {
+	if id == Player1Id {
+		return g.State == Player1Turn
+	} else {
+		return g.State == Player2Turn
+	}
+}
+
 func (g *Game) getPlayerTypesMessage() string {
 
 	return fmt.Sprintf(
@@ -250,6 +258,13 @@ func GetPlayerTypeFromString(s string) PlayerType {
 	}
 	return Human
 }
+
+type PlayerId int
+
+const (
+	Player1Id PlayerId = iota
+	Player2Id
+)
 
 type CommandType int
 

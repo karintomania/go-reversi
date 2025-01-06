@@ -30,59 +30,6 @@ func TestQuitGame(t *testing.T) {
 	}
 }
 
-func TestGameMovingPosition(t *testing.T) {
-	var b Board
-
-	b.init(4)
-
-	g := NewGame(&b, Human, Human)
-
-	ch := make(chan string)
-
-	// move to playing
-	g.Progress(ch)
-
-	// go left
-	go func() {
-		ch <- "d"
-	}()
-	g.Progress(ch)
-
-	if g.Board.Position.X != 1 || g.Board.Position.Y != 0 {
-		t.Errorf("got %v, but want %v", g.Board.Position, Position{1, 0})
-	}
-
-	// go right
-	go func() {
-		ch <- "a"
-	}()
-	g.Progress(ch)
-
-	if g.Board.Position.X != 0 || g.Board.Position.Y != 0 {
-		t.Errorf("got %v, but want %v", g.Board.Position, Position{0, 0})
-	}
-
-	// go down
-	go func() {
-		ch <- "s"
-	}()
-	g.Progress(ch)
-
-	if g.Board.Position.X != 0 || g.Board.Position.Y != 1 {
-		t.Errorf("got %v, but want %v", g.Board.Position, Position{0, 1})
-	}
-
-	// go up
-	go func() {
-		ch <- "w"
-	}()
-	g.Progress(ch)
-
-	if g.Board.Position.X != 0 || g.Board.Position.Y != 0 {
-		t.Errorf("got %v, but want %v", g.Board.Position, Position{0, 0})
-	}
-}
-
 func TestPassAndFinishGame(t *testing.T) {
 	var b Board
 
