@@ -91,23 +91,81 @@ func (c *OnlineHostClient) Run() {
 
 // guest client which sends command to server
 type OnlineGuestClient struct {
-	gameCh    chan Game
-	gameCmdCh chan GameCommand
-	PlayerId  PlayerId
+	PlayerId PlayerId
+	d        *Display
+	p        *Position
 }
 
 func (c *OnlineGuestClient) Run() {
-AiClientLoop:
-	for g := range c.gameCh {
-		if g.IsMyTurn(c.PlayerId) {
-			p := getAiPosition(g.Board)
-			cmd := GameCommand{CommandPlace, p}
-			// time.Sleep(5 * time.Second)
-			c.gameCmdCh <- cmd
+	// establish connection
+	url := "ws://localhost:8089/"
+	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		fmt.Errorf("Dial error: %v", err)
+	}
+
+	// init game
+	var g Game
+
+	input := make(chan string)
+	defer close(input)
+
+	go func() {
+		for {
+			c.d.Read(input)
+		}
+	}()
+
+	go func() {
+		for char := range input {
+			if g.IsMyTurn(c.PlayerId) {
+				switch char {
+				// move position
+				case "h", "a": // ←
+					c.p.addX(-1, g.Board.N)
+					c.d.Rendor(&g, *c.p)
+				case "l", "d": // →
+					c.p.addX(1, g.Board.N)
+					c.d.Rendor(&g, *c.p)
+				case "j", "s": // ↓
+					c.p.addY(1, g.Board.N)
+					c.d.Rendor(&g, *c.p)
+				case "k", "w": // ↑
+					c.p.addY(-1, g.Board.N)
+					c.d.Rendor(&g, *c.p)
+
+				// place
+				case " ":
+					cmd := GameCommand{CommandPlace, *c.p}
+					conn.WriteJSON(cmd)
+				// quit
+				case "c":
+					cmd := GameCommand{CommandType: CommandQuit}
+					conn.WriteJSON(cmd)
+				}
+			}
+
+			if g.State == Finished {
+				switch char {
+				case "r":
+					cmd := GameCommand{CommandType: CommandReplay}
+					conn.WriteJSON(cmd)
+				case "c": // quit
+					cmd := GameCommand{CommandType: CommandQuit}
+					conn.WriteJSON(cmd)
+				}
+			}
+		}
+	}()
+
+onlineGuestClientLoop:
+	for {
+		conn.ReadJSON(&g)
+		if g.State == Quit {
+			break onlineGuestClientLoop
 		}
 
-		if g.State == Quit {
-			break AiClientLoop
-		}
+		fmt.Print("received!")
+		c.d.Rendor(&g, *c.p)
 	}
 }

@@ -60,4 +60,6 @@ func TestOnlineHostClientSendCommand(t *testing.T) {
 	got = <-gameCmdCh
 
 	assert.Equal(t, cmd.CommandType, got.CommandType)
+
+	conn.Close()
 }

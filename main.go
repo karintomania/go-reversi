@@ -15,7 +15,7 @@ const (
 func main() {
 	n := flag.Int("n", DEFAULT_N, "Dimension of the board. (Default: 8)")
 	playerNum := flag.Int("p", 1, "1 for Single Play, 2 for 2 Players. (Default: 1)")
-	server := flag.Bool("s", true, "Start game with server")
+	server := flag.Bool("s", false, "Start game with server")
 	url := flag.String("url", "", "Specify game server url to connect")
 
 	flag.Parse()
@@ -25,7 +25,7 @@ func main() {
 	}
 
 	if *url != "" {
-		startGuestClient(*n, *url)
+		startGuestClient(*url)
 	}
 
 	switch *playerNum {
@@ -142,7 +142,6 @@ func startHostClient(n int) {
 
 	p := &Position{}
 
-	// local player
 	cli1 := Client{
 		gameCh:    player1GameCh,
 		gameCmdCh: player1CmdCh,
@@ -151,8 +150,7 @@ func startHostClient(n int) {
 		p:         p,
 	}
 
-	// get from server
-	cli2 := AiClient{
+	cli2 := OnlineHostClient{
 		gameCh:    player2GameCh,
 		gameCmdCh: player2CmdCh,
 		PlayerId:  Player2Id,
@@ -180,5 +178,24 @@ func startHostClient(n int) {
 	close(player2GameCh)
 }
 
-func startGuestClient(n int, url string) {
+func startGuestClient(url string) {
+	_ = url
+	d := NewDisplay()
+	defer d.Close()
+
+	cli := OnlineGuestClient{
+		PlayerId: Player2Id,
+		d:        &d,
+		p:        &Position{},
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		cli.Run()
+		wg.Done()
+	}()
+
+	wg.Wait()
 }
