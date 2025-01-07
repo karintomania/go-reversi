@@ -15,15 +15,25 @@ const (
 func main() {
 	n := flag.Int("n", DEFAULT_N, "Dimension of the board. (Default: 8)")
 	playerNum := flag.Int("p", 1, "1 for Single Play, 2 for 2 Players. (Default: 1)")
+	server := flag.Bool("s", true, "Start game with server")
+	url := flag.String("url", "", "Specify game server url to connect")
 
 	flag.Parse()
 
+	if *server {
+		startHostClient(*n)
+	}
+
+	if *url != "" {
+		startGuestClient(*n, *url)
+	}
+
 	switch *playerNum {
 	case 2: // 2 players
-		startLocalMultiGame(*n)
+		// startLocalMultiGame(*n)
 
 	default: // 1 player
-		startLocalSingleGame(*n)
+		// startLocalSingleGame(*n)
 	}
 }
 
@@ -116,4 +126,59 @@ func startLocalMultiGame(n int) {
 	close(player2CmdCh)
 	close(player1GameCh)
 	close(player2GameCh)
+}
+
+func startHostClient(n int) {
+	var b Board
+
+	b.init(n)
+
+	d := NewDisplay()
+	defer d.Close()
+
+	g := NewGame(&b, Human, AI)
+
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
+
+	p := &Position{}
+
+	// local player
+	cli1 := Client{
+		gameCh:    player1GameCh,
+		gameCmdCh: player1CmdCh,
+		PlayerId:  Player1Id,
+		d:         &d,
+		p:         p,
+	}
+
+	// get from server
+	cli2 := AiClient{
+		gameCh:    player2GameCh,
+		gameCmdCh: player2CmdCh,
+		PlayerId:  Player2Id,
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		cli1.Run()
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		cli2.Run()
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	close(player1CmdCh)
+	close(player2CmdCh)
+	close(player1GameCh)
+	close(player2GameCh)
+}
+
+func startGuestClient(n int, url string) {
 }
