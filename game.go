@@ -6,6 +6,7 @@ type GameState int
 
 const (
 	Initialized GameState = iota
+	WaitingConnection
 	Player1Turn
 	Player2Turn
 	Finished
@@ -70,8 +71,20 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 		for {
 			switch g.State {
 			case Initialized:
-				g.Message = g.getPlayerTypesMessage()
+				g.Message = "Waiting for establish the connection"
+				g.State = WaitingConnection
+
+			case WaitingConnection:
+				// make sure both clients are connected
+				cmd1 := <-player1Cmd
+				cmd2 := <-player2Cmd
+
+				if cmd1.CommandType != CommandConnectionCheck ||
+					cmd2.CommandType != CommandConnectionCheck {
+					fmt.Errorf("Connection check failed")
+				}
 				g.updateTurnFromBoard()
+				g.Message = g.getPlayerTypesMessage()
 
 			case Player1Turn, Player2Turn:
 				// waiting for players' input
@@ -101,6 +114,8 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 				switch cmd.CommandType {
 				case CommandReplay:
 					g.replay()
+					g.updateTurnFromBoard()
+					g.Message = g.getPlayerTypesMessage()
 				case CommandQuit:
 					g.State = Quit
 				}
@@ -154,8 +169,6 @@ func (g *Game) replay() {
 	g.Player1.Colour, g.Player2.Colour = g.Player2.Colour, g.Player1.Colour
 
 	g.Board.init(g.Board.N)
-
-	g.State = Initialized
 }
 
 func (g *Game) finish() {
@@ -267,6 +280,7 @@ type CommandType int
 
 const (
 	CommandPlace CommandType = iota
+	CommandConnectionCheck
 	CommandReplay
 	CommandQuit
 )

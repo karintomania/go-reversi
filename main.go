@@ -12,6 +12,15 @@ const (
 	DEFAULT_N = 3
 )
 
+type GameMode int
+
+const (
+	Single GameMode = iota
+	LocalMulti
+	OnlineHost
+	OnlineGuest
+)
+
 func main() {
 	n := flag.Int("n", DEFAULT_N, "Dimension of the board. (Default: 8)")
 	playerNum := flag.Int("p", 1, "1 for Single Play, 2 for 2 Players. (Default: 1)")
@@ -20,20 +29,31 @@ func main() {
 
 	flag.Parse()
 
+	gm := Single
+
 	if *server {
+		gm = OnlineHost
+	} else if *url != "" {
+		gm = OnlineGuest
+	} else if *playerNum == 2 {
+		gm = LocalMulti
+	}
+
+	switch gm {
+	case Single: // 2 players
+		startLocalSingleGame(*n)
+
+	case LocalMulti: // 2 players
+		startLocalMultiGame(*n)
+
+	case OnlineHost:
 		startHostClient(*n)
-	}
 
-	if *url != "" {
+	case OnlineGuest:
 		startGuestClient(*url)
-	}
-
-	switch *playerNum {
-	case 2: // 2 players
-		// startLocalMultiGame(*n)
 
 	default: // 1 player
-		// startLocalSingleGame(*n)
+		startLocalSingleGame(*n)
 	}
 }
 

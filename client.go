@@ -69,6 +69,12 @@ func (c *Client) Run() {
 
 clientLoop:
 	for g = range c.gameCh {
+		if g.State == WaitingConnection {
+			go func() {
+				c.gameCmdCh <- GameCommand{CommandType: CommandConnectionCheck}
+			}()
+		}
+
 		if g.State == Quit {
 			break clientLoop
 		}
@@ -152,6 +158,11 @@ localMultiClientLoop:
 		// discard gameCh2
 		_ = <-c.gameCh2
 
+		if g.State == WaitingConnection {
+			c.gameCmdCh1 <- GameCommand{CommandType: CommandConnectionCheck}
+			c.gameCmdCh2 <- GameCommand{CommandType: CommandConnectionCheck}
+		}
+
 		if g.State == Quit {
 			break localMultiClientLoop
 		}
@@ -174,6 +185,10 @@ AiClientLoop:
 			cmd := GameCommand{CommandPlace, p}
 			// time.Sleep(5 * time.Second)
 			c.gameCmdCh <- cmd
+		}
+
+		if g.State == WaitingConnection {
+			c.gameCmdCh <- GameCommand{CommandType: CommandConnectionCheck}
 		}
 
 		if g.State == Quit {

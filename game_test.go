@@ -16,9 +16,17 @@ func TestGameStart(t *testing.T) {
 	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
 
 	mockSync(player1GameCh, player2GameCh)
+	assert.Equal(t, WaitingConnection, g.State)
+
+	cmd := GameCommand{CommandType: CommandConnectionCheck}
+	player1CmdCh <- cmd
+	player2CmdCh <- cmd
+
+	mockSync(player1GameCh, player2GameCh)
+
 	assert.Equal(t, Player1Turn, g.State)
 
-	cmd := GameCommand{CommandPlace, Position{0, 2}}
+	cmd = GameCommand{CommandPlace, Position{0, 2}}
 	player1CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 
@@ -49,11 +57,16 @@ func TestGamePass(t *testing.T) {
 
 	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
 
+	// connection check
+	mockSync(player1GameCh, player2GameCh)
+	cmd := GameCommand{CommandType: CommandConnectionCheck}
+	player1CmdCh <- cmd
+	player2CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 
 	assert.Equal(t, Player1Turn, g.State)
 
-	cmd := GameCommand{CommandPlace, Position{0, 0}}
+	cmd = GameCommand{CommandPlace, Position{0, 0}}
 	player1CmdCh <- cmd
 
 	mockSync(player1GameCh, player2GameCh)
@@ -97,11 +110,16 @@ func TestReplay(t *testing.T) {
 
 	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
 
+	// connection check
+	mockSync(player1GameCh, player2GameCh)
+	cmd := GameCommand{CommandType: CommandConnectionCheck}
+	player1CmdCh <- cmd
+	player2CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 
 	assert.Equal(t, Player1Turn, g.State)
 
-	cmd := GameCommand{CommandPlace, Position{0, 0}}
+	cmd = GameCommand{CommandPlace, Position{0, 0}}
 	player1CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 	assert.Equal(t, Finished, g.State)
@@ -109,8 +127,6 @@ func TestReplay(t *testing.T) {
 	// replay
 	cmd = GameCommand{CommandType: CommandReplay}
 	player1CmdCh <- cmd
-	mockSync(player1GameCh, player2GameCh)
-	assert.Equal(t, Initialized, g.State)
 
 	// the turn is swapped
 	mockSync(player1GameCh, player2GameCh)
@@ -134,8 +150,6 @@ func TestReplay(t *testing.T) {
 	// replay
 	cmd = GameCommand{CommandType: CommandReplay}
 	player2CmdCh <- cmd
-	mockSync(player1GameCh, player2GameCh)
-	assert.Equal(t, Initialized, g.State)
 
 	// the turn is swapped
 	mockSync(player1GameCh, player2GameCh)

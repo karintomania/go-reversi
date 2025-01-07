@@ -161,11 +161,15 @@ func (c *OnlineGuestClient) Run() {
 onlineGuestClientLoop:
 	for {
 		conn.ReadJSON(&g)
+
+		if g.State == WaitingConnection {
+			conn.WriteJSON(GameCommand{CommandType: CommandConnectionCheck})
+		}
+
 		if g.State == Quit {
 			break onlineGuestClientLoop
 		}
 
-		fmt.Print("received!")
 		c.d.Rendor(&g, *c.p)
 	}
 }
