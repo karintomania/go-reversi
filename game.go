@@ -69,7 +69,8 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 	player1Quit := make(chan bool)
 	player2Quit := make(chan bool)
 
-	sync := func() {
+	// broadcast game status
+	broadcast := func() {
 		player1Game <- *g
 		player2Game <- *g
 	}
@@ -84,7 +85,7 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 
 		if quit {
 			g.State = Quit
-			sync()
+			broadcast()
 		}
 	}()
 
@@ -151,10 +152,7 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 				break gameLoop
 			}
 
-			go func() {
-				player1Game <- *g
-				player2Game <- *g
-			}()
+			go broadcast()
 		}
 	}()
 

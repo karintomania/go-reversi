@@ -10,6 +10,12 @@ type Board struct {
 	Turn  Turn
 }
 
+func NewBoard(n int) *Board {
+	b := &Board{}
+	b.init(n)
+	return b
+}
+
 func (b *Board) init(n int) {
 	b.N = n
 

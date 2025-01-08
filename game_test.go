@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -38,7 +39,6 @@ func TestGameStart(t *testing.T) {
 	mockSync(player1GameCh, player2GameCh)
 
 	assert.Equal(t, Player1Turn, g.State)
-
 }
 
 func TestGamePass(t *testing.T) {
@@ -174,6 +174,7 @@ func TestGameQuit(t *testing.T) {
 	assert.Equal(t, Initialized, g.State)
 
 	player1QuitCh <- true
+	time.Sleep(10 * time.Millisecond)
 
 	assert.Equal(t, Quit, g.State)
 
@@ -184,6 +185,7 @@ func TestGameQuit(t *testing.T) {
 	assert.Equal(t, Initialized, g.State)
 
 	player2QuitCh <- true
+	time.Sleep(10 * time.Millisecond)
 
 	assert.Equal(t, Quit, g.State)
 

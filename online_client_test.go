@@ -11,10 +11,10 @@ import (
 func TestOnlineHostClientSendCommand(t *testing.T) {
 
 	gameCh := make(chan Game)
-	gameCmdCh := make(chan GameCommand)
+	cmdCh := make(chan GameCommand)
 	quitCh := make(chan bool)
 
-	client := OnlineHostClient{gameCh, gameCmdCh, quitCh, Player2Id}
+	client := OnlineHostClient{gameCh, cmdCh, quitCh, Player2Id}
 
 	go client.Run()
 
@@ -32,7 +32,7 @@ func TestOnlineHostClientSendCommand(t *testing.T) {
 	cmd := GameCommand{CommandType: CommandPlace, Position: Position{1, 1}}
 	conn.WriteJSON(cmd)
 
-	got := <-gameCmdCh
+	got := <-cmdCh
 
 	assert.Equal(t, cmd.CommandType, got.CommandType)
 	assert.Equal(t, cmd.Position.X, got.Position.X)

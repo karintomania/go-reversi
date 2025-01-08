@@ -14,10 +14,10 @@ var _ = time.Second //TODO: debugging
 
 // host a game server
 type OnlineHostClient struct {
-	gameCh    chan Game
-	gameCmdCh chan GameCommand
-	quitCh    chan bool
-	PlayerId  PlayerId
+	gameCh   chan Game
+	cmdCh    chan GameCommand
+	quitCh   chan bool
+	PlayerId PlayerId
 }
 
 func (c *OnlineHostClient) Run() {
@@ -52,7 +52,7 @@ func (c *OnlineHostClient) Run() {
 					c.quitCh <- true
 					wg.Done()
 				} else {
-					c.gameCmdCh <- cmd
+					c.cmdCh <- cmd
 				}
 
 			}
@@ -125,16 +125,16 @@ func (c *OnlineGuestClient) Run() {
 				// move position
 				case "h", "a": // ←
 					c.p.addX(-1, g.Board.N)
-					c.d.Rendor(&g, *c.p)
+					c.d.Render(&g, *c.p)
 				case "l", "d": // →
 					c.p.addX(1, g.Board.N)
-					c.d.Rendor(&g, *c.p)
+					c.d.Render(&g, *c.p)
 				case "j", "s": // ↓
 					c.p.addY(1, g.Board.N)
-					c.d.Rendor(&g, *c.p)
+					c.d.Render(&g, *c.p)
 				case "k", "w": // ↑
 					c.p.addY(-1, g.Board.N)
-					c.d.Rendor(&g, *c.p)
+					c.d.Render(&g, *c.p)
 
 				// place
 				case " ":
@@ -170,6 +170,6 @@ onlineGuestClientLoop:
 			break onlineGuestClientLoop
 		}
 
-		c.d.Rendor(&g, *c.p)
+		c.d.Render(&g, *c.p)
 	}
 }

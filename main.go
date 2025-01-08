@@ -69,23 +69,29 @@ func startLocalSingleGame(n int) {
 
 	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
 
-	p := &Position{}
+	inputCh := make(chan string)
+
+	go func() {
+		for {
+			d.Read(inputCh)
+		}
+	}()
 
 	// local single
-	cli1 := Client{
-		gameCh:    player1GameCh,
-		gameCmdCh: player1CmdCh,
-		quitCh:    player1QuitCh,
-		PlayerId:  Player1Id,
-		d:         &d,
-		p:         p,
-	}
+	cli1 := NewLocalClient(
+		player1GameCh,
+		player1CmdCh,
+		player1QuitCh,
+		inputCh,
+		Player1Id,
+		&d,
+	)
 
 	cli2 := AiClient{
-		gameCh:    player2GameCh,
-		gameCmdCh: player2CmdCh,
-		quitCh:    player2QuitCh,
-		PlayerId:  Player2Id,
+		gameCh:   player2GameCh,
+		cmdCh:    player2CmdCh,
+		quitCh:   player2QuitCh,
+		PlayerId: Player2Id,
 	}
 
 	var wg sync.WaitGroup
@@ -118,22 +124,28 @@ func startLocalMultiGame(n int) {
 	d := NewDisplay()
 	defer d.Close()
 
+	inputCh := make(chan string)
+
+	go func() {
+		for {
+			d.Read(inputCh)
+		}
+	}()
+
 	g := NewGame(&b, Human, Human)
 
 	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
 
-	p := &Position{}
-
-	cli := LocalMultiClient{
-		gameCh1:    player1GameCh,
-		gameCmdCh1: player1CmdCh,
-		quitCh1:    player1QuitCh,
-		gameCh2:    player2GameCh,
-		gameCmdCh2: player2CmdCh,
-		quitCh2:    player2QuitCh,
-		d:          &d,
-		p:          p,
-	}
+	cli := NewLocalMultiClient(
+		player1GameCh,
+		player1CmdCh,
+		player1QuitCh,
+		player2GameCh,
+		player2CmdCh,
+		player2QuitCh,
+		inputCh,
+		&d,
+	)
 
 	var wg sync.WaitGroup
 	// finish if one of the players quit
@@ -168,20 +180,20 @@ func startHostClient(n int) {
 
 	p := &Position{}
 
-	cli1 := Client{
-		gameCh:    player1GameCh,
-		gameCmdCh: player1CmdCh,
-		quitCh:    player1QuitCh,
-		PlayerId:  Player1Id,
-		d:         &d,
-		p:         p,
+	cli1 := LocalClient{
+		gameCh:   player1GameCh,
+		cmdCh:    player1CmdCh,
+		quitCh:   player1QuitCh,
+		PlayerId: Player1Id,
+		d:        &d,
+		p:        p,
 	}
 
 	cli2 := OnlineHostClient{
-		gameCh:    player2GameCh,
-		gameCmdCh: player2CmdCh,
-		quitCh:    player2QuitCh,
-		PlayerId:  Player2Id,
+		gameCh:   player2GameCh,
+		cmdCh:    player2CmdCh,
+		quitCh:   player2QuitCh,
+		PlayerId: Player2Id,
 	}
 
 	var wg sync.WaitGroup

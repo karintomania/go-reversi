@@ -17,6 +17,11 @@ const (
 	Spacer          = "    "
 )
 
+type Renderer interface {
+	Render(g *Game, p Position)
+	Close()
+}
+
 type Display struct {
 	tm *term.Term
 }
@@ -33,7 +38,7 @@ func NewDisplay() Display {
 	return d
 }
 
-func (d *Display) Read(out chan string) {
+func (d *Display) Read(out chan<- string) {
 	readBytes := make([]byte, 1)
 	_, err := d.tm.Read(readBytes)
 	if err != nil {
@@ -55,7 +60,7 @@ func (d *Display) Close() {
 	d.tm.Restore()
 	d.tm.Close()
 }
-func (d *Display) Rendor(g *Game, p Position) {
+func (d *Display) Render(g *Game, p Position) {
 	b := g.Board
 	state := g.State
 
