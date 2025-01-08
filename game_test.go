@@ -13,26 +13,27 @@ func TestGameStart(t *testing.T) {
 
 	g := NewGame(&b, Human, Human)
 
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := g.Start()
 
 	mockSync(player1GameCh, player2GameCh)
 	assert.Equal(t, WaitingConnection, g.State)
 
 	cmd := GameCommand{CommandType: CommandConnectionCheck}
 	player1CmdCh <- cmd
-	player2CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
 
+	player2CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 
 	assert.Equal(t, Player1Turn, g.State)
 
-	cmd = GameCommand{CommandPlace, Position{0, 2}}
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{0, 2}}
 	player1CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 
 	assert.Equal(t, Player2Turn, g.State)
 
-	cmd = GameCommand{CommandPlace, Position{1, 2}}
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{1, 2}}
 	player2CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 
@@ -55,25 +56,27 @@ func TestGamePass(t *testing.T) {
 
 	g := NewGame(&b, Human, Human)
 
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := g.Start()
 
 	// connection check
 	mockSync(player1GameCh, player2GameCh)
 	cmd := GameCommand{CommandType: CommandConnectionCheck}
 	player1CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+
 	player2CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 
 	assert.Equal(t, Player1Turn, g.State)
 
-	cmd = GameCommand{CommandPlace, Position{0, 0}}
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{0, 0}}
 	player1CmdCh <- cmd
 
 	mockSync(player1GameCh, player2GameCh)
 	assert.Equal(t, Player2Turn, g.State)
 	assert.Equal(t, HasBlack, g.Board.Cells[0][0])
 
-	cmd = GameCommand{CommandPlace, Position{2, 0}}
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{2, 0}}
 	player2CmdCh <- cmd
 
 	mockSync(player1GameCh, player2GameCh)
@@ -82,7 +85,7 @@ func TestGamePass(t *testing.T) {
 	assert.Equal(t, Player2Turn, g.State)
 	assert.Equal(t, HasWhite, g.Board.Cells[0][2])
 
-	cmd = GameCommand{CommandPlace, Position{1, 0}}
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{1, 0}}
 	player2CmdCh <- cmd
 
 	mockSync(player1GameCh, player2GameCh)
@@ -108,18 +111,20 @@ func TestReplay(t *testing.T) {
 
 	g := NewGame(&b, Human, Human)
 
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := g.Start()
 
 	// connection check
 	mockSync(player1GameCh, player2GameCh)
 	cmd := GameCommand{CommandType: CommandConnectionCheck}
 	player1CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+
 	player2CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 
 	assert.Equal(t, Player1Turn, g.State)
 
-	cmd = GameCommand{CommandPlace, Position{0, 0}}
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{0, 0}}
 	player1CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 	assert.Equal(t, Finished, g.State)
@@ -140,7 +145,7 @@ func TestReplay(t *testing.T) {
 		},
 	)
 
-	cmd = GameCommand{CommandPlace, Position{0, 0}}
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{0, 0}}
 	player2CmdCh <- cmd
 	mockSync(player1GameCh, player2GameCh)
 
@@ -154,6 +159,34 @@ func TestReplay(t *testing.T) {
 	// the turn is swapped
 	mockSync(player1GameCh, player2GameCh)
 	assert.Equal(t, Player1Turn, g.State)
+}
+
+func TestGameQuit(t *testing.T) {
+	var b Board
+
+	b.init(3)
+
+	// player 1
+	g := NewGame(&b, Human, Human)
+
+	_, _, _, _, player1QuitCh, _ := g.Start()
+
+	assert.Equal(t, Initialized, g.State)
+
+	player1QuitCh <- true
+
+	assert.Equal(t, Quit, g.State)
+
+	// player 2
+	g = NewGame(&b, Human, Human)
+	_, _, _, _, _, player2QuitCh := g.Start()
+
+	assert.Equal(t, Initialized, g.State)
+
+	player2QuitCh <- true
+
+	assert.Equal(t, Quit, g.State)
+
 }
 
 // discard channel output

@@ -67,7 +67,7 @@ func startLocalSingleGame(n int) {
 
 	g := NewGame(&b, Human, AI)
 
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
 
 	p := &Position{}
 
@@ -75,6 +75,7 @@ func startLocalSingleGame(n int) {
 	cli1 := Client{
 		gameCh:    player1GameCh,
 		gameCmdCh: player1CmdCh,
+		quitCh:    player1QuitCh,
 		PlayerId:  Player1Id,
 		d:         &d,
 		p:         p,
@@ -83,6 +84,7 @@ func startLocalSingleGame(n int) {
 	cli2 := AiClient{
 		gameCh:    player2GameCh,
 		gameCmdCh: player2CmdCh,
+		quitCh:    player2QuitCh,
 		PlayerId:  Player2Id,
 	}
 
@@ -118,15 +120,17 @@ func startLocalMultiGame(n int) {
 
 	g := NewGame(&b, Human, Human)
 
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
 
 	p := &Position{}
 
 	cli := LocalMultiClient{
 		gameCh1:    player1GameCh,
 		gameCmdCh1: player1CmdCh,
+		quitCh1:    player1QuitCh,
 		gameCh2:    player2GameCh,
 		gameCmdCh2: player2CmdCh,
+		quitCh2:    player2QuitCh,
 		d:          &d,
 		p:          p,
 	}
@@ -146,6 +150,8 @@ func startLocalMultiGame(n int) {
 	close(player2CmdCh)
 	close(player1GameCh)
 	close(player2GameCh)
+	close(player1QuitCh)
+	close(player2QuitCh)
 }
 
 func startHostClient(n int) {
@@ -158,13 +164,14 @@ func startHostClient(n int) {
 
 	g := NewGame(&b, Human, AI)
 
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh := g.Start()
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
 
 	p := &Position{}
 
 	cli1 := Client{
 		gameCh:    player1GameCh,
 		gameCmdCh: player1CmdCh,
+		quitCh:    player1QuitCh,
 		PlayerId:  Player1Id,
 		d:         &d,
 		p:         p,
@@ -173,6 +180,7 @@ func startHostClient(n int) {
 	cli2 := OnlineHostClient{
 		gameCh:    player2GameCh,
 		gameCmdCh: player2CmdCh,
+		quitCh:    player2QuitCh,
 		PlayerId:  Player2Id,
 	}
 
@@ -194,6 +202,8 @@ func startHostClient(n int) {
 
 	close(player1CmdCh)
 	close(player2CmdCh)
+	close(player1QuitCh)
+	close(player2QuitCh)
 	close(player1GameCh)
 	close(player2GameCh)
 }

@@ -52,18 +52,41 @@ func NewGame(b *Board, type1, type2 PlayerType) Game {
 	return Game{
 		b,
 		Initialized,
-		Player{name1, type1, Black},
-		Player{name2, type2, White},
+		Player{name1, false, type1, Black},
+		Player{name2, false, type2, White},
 		"",
 		"",
 	}
 }
 
-func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game) {
+func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game, chan bool, chan bool) {
 	player1Cmd := make(chan GameCommand)
 	player2Cmd := make(chan GameCommand)
-	player1Out := make(chan Game)
-	player2Out := make(chan Game)
+
+	player1Game := make(chan Game)
+	player2Game := make(chan Game)
+
+	player1Quit := make(chan bool)
+	player2Quit := make(chan bool)
+
+	sync := func() {
+		player1Game <- *g
+		player2Game <- *g
+	}
+
+	go func() {
+		quit := false
+
+		select {
+		case quit = <-player1Quit:
+		case quit = <-player2Quit:
+		}
+
+		if quit {
+			g.State = Quit
+			sync()
+		}
+	}()
 
 	go func() {
 
@@ -76,15 +99,23 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 
 			case WaitingConnection:
 				// make sure both clients are connected
-				cmd1 := <-player1Cmd
-				cmd2 := <-player2Cmd
-
-				if cmd1.CommandType != CommandConnectionCheck ||
-					cmd2.CommandType != CommandConnectionCheck {
-					fmt.Errorf("Connection check failed")
+				select {
+				case cmd := <-player1Cmd:
+					switch cmd.CommandType {
+					case CommandConnectionCheck:
+						g.Player1.Ready = true
+					}
+				case cmd := <-player2Cmd:
+					switch cmd.CommandType {
+					case CommandConnectionCheck:
+						g.Player2.Ready = true
+					}
 				}
-				g.updateTurnFromBoard()
-				g.Message = g.getPlayerTypesMessage()
+
+				if g.Player1.Ready && g.Player2.Ready {
+					g.updateTurnFromBoard()
+					g.Message = g.getPlayerTypesMessage()
+				}
 
 			case Player1Turn, Player2Turn:
 				// waiting for players' input
@@ -99,8 +130,6 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 				// place
 				case CommandPlace:
 					g.place(cmd.Position)
-				case CommandQuit:
-					g.State = Quit
 				}
 
 			case Finished:
@@ -116,20 +145,20 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 					g.replay()
 					g.updateTurnFromBoard()
 					g.Message = g.getPlayerTypesMessage()
-				case CommandQuit:
-					g.State = Quit
 				}
 
 			case Quit:
 				break gameLoop
 			}
 
-			player1Out <- *g
-			player2Out <- *g
+			go func() {
+				player1Game <- *g
+				player2Game <- *g
+			}()
 		}
 	}()
 
-	return player1Cmd, player2Cmd, player1Out, player2Out
+	return player1Cmd, player2Cmd, player1Game, player2Game, player1Quit, player2Quit
 }
 
 func (g *Game) place(p Position) {
@@ -237,6 +266,7 @@ func (g *Game) getPlayerTypesMessage() string {
 
 type Player struct {
 	Name   string
+	Ready  bool
 	Type   PlayerType
 	Colour Turn
 }
@@ -282,10 +312,10 @@ const (
 	CommandPlace CommandType = iota
 	CommandConnectionCheck
 	CommandReplay
-	CommandQuit
 )
 
 type GameCommand struct {
 	CommandType CommandType
 	Position    Position
+	Quit        bool
 }

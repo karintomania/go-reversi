@@ -16,6 +16,7 @@ var _ = time.Second //TODO: debugging
 type OnlineHostClient struct {
 	gameCh    chan Game
 	gameCmdCh chan GameCommand
+	quitCh    chan bool
 	PlayerId  PlayerId
 }
 
@@ -47,12 +48,13 @@ func (c *OnlineHostClient) Run() {
 					break
 				}
 
-				c.gameCmdCh <- cmd
-
-				switch cmd.CommandType {
-				case CommandQuit:
+				if cmd.Quit {
+					c.quitCh <- true
 					wg.Done()
+				} else {
+					c.gameCmdCh <- cmd
 				}
+
 			}
 		}()
 
@@ -136,11 +138,7 @@ func (c *OnlineGuestClient) Run() {
 
 				// place
 				case " ":
-					cmd := GameCommand{CommandPlace, *c.p}
-					conn.WriteJSON(cmd)
-				// quit
-				case "c":
-					cmd := GameCommand{CommandType: CommandQuit}
+					cmd := GameCommand{CommandType: CommandPlace, Position: *c.p}
 					conn.WriteJSON(cmd)
 				}
 			}
@@ -150,10 +148,12 @@ func (c *OnlineGuestClient) Run() {
 				case "r":
 					cmd := GameCommand{CommandType: CommandReplay}
 					conn.WriteJSON(cmd)
-				case "c": // quit
-					cmd := GameCommand{CommandType: CommandQuit}
-					conn.WriteJSON(cmd)
 				}
+			}
+
+			if char == "c" {
+				cmd := GameCommand{Quit: true}
+				go conn.WriteJSON(cmd)
 			}
 		}
 	}()
