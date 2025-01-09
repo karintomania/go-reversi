@@ -102,13 +102,11 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 				// make sure both clients are connected
 				select {
 				case cmd := <-player1Cmd:
-					switch cmd.CommandType {
-					case CommandConnectionCheck:
+					if cmd.CommandType == CommandConnectionCheck {
 						g.Player1.Ready = true
 					}
 				case cmd := <-player2Cmd:
-					switch cmd.CommandType {
-					case CommandConnectionCheck:
+					if cmd.CommandType == CommandConnectionCheck {
 						g.Player2.Ready = true
 					}
 				}
@@ -233,10 +231,8 @@ func (g *Game) pass() {
 	g.Board.Pass()
 }
 
-func (g *Game) getCurrentPlayer() Player {
-	turn := g.Board.Turn
-
-	if g.Player1.Colour == turn {
+func (g *Game) GetPlayer(id PlayerId) Player {
+	if id == Player1Id {
 		return g.Player1
 	} else {
 		return g.Player2

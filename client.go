@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 var _ = time.Second //TODO: debugging
 
@@ -27,7 +30,7 @@ func NewLocalClient(
 		cmdCh:    cmdCh,
 		quitCh:   quitCh,
 		inputCh:  inputCh,
-		PlayerId: Player1Id,
+		PlayerId: PlayerId,
 		d:        d,
 		p:        &Position{},
 	}
@@ -43,60 +46,70 @@ func (c *LocalClient) Run() {
 	defer close(input)
 
 	go func() {
-	localCLientInputLoop:
-		for char := range c.inputCh {
-			if g.IsMyTurn(c.PlayerId) {
-				switch char {
-				// move position
-				case "h", "a": // ←
-					c.p.addX(-1, g.Board.N)
-					c.d.Render(&g, *c.p)
-				case "l", "d": // →
-					c.p.addX(1, g.Board.N)
-					c.d.Render(&g, *c.p)
-				case "j", "s": // ↓
-					c.p.addY(1, g.Board.N)
-					c.d.Render(&g, *c.p)
-				case "k", "w": // ↑
-					c.p.addY(-1, g.Board.N)
-					c.d.Render(&g, *c.p)
-
-				// place
-				case " ":
-					cmd := GameCommand{CommandType: CommandPlace, Position: *c.p}
-					go func() { c.cmdCh <- cmd }()
-				}
+	localClientLoop:
+		for g = range c.gameCh {
+			if g.State == WaitingConnection &&
+				g.GetPlayer(c.PlayerId).Ready == false {
+				go func() {
+					c.cmdCh <- GameCommand{CommandType: CommandConnectionCheck}
+				}()
 			}
 
-			if g.State == Finished {
-				switch char {
-				case "r":
-					cmd := GameCommand{CommandType: CommandReplay}
-					go func() { c.cmdCh <- cmd }()
-				}
+			if g.State == Quit {
+				break localClientLoop
 			}
 
-			if char == "c" {
-				c.quitCh <- true
-				break localCLientInputLoop
-			}
+			c.d.Render(&g, *c.p)
 		}
 	}()
 
-localClientLoop:
-	for g = range c.gameCh {
-		if g.State == WaitingConnection {
-			go func() {
-				c.cmdCh <- GameCommand{CommandType: CommandConnectionCheck}
-			}()
+localClientInputLoop:
+	for char := range c.inputCh {
+
+		switch char {
+		// move position
+		case "h", "a": // ←
+			c.p.addX(-1, g.Board.N)
+			c.d.Render(&g, *c.p)
+			continue localClientInputLoop
+		case "l", "d": // →
+			c.p.addX(1, g.Board.N)
+			c.d.Render(&g, *c.p)
+			continue localClientInputLoop
+		case "j", "s": // ↓
+			c.p.addY(1, g.Board.N)
+			c.d.Render(&g, *c.p)
+			continue localClientInputLoop
+		case "k", "w": // ↑
+			c.p.addY(-1, g.Board.N)
+			c.d.Render(&g, *c.p)
+			continue localClientInputLoop
+		case "c": // quit
+			go func() { c.quitCh <- true }()
+			fmt.Println("Program finished.")
+			break localClientInputLoop
 		}
 
-		if g.State == Quit {
-			break localClientLoop
+		if g.IsMyTurn(c.PlayerId) {
+			switch char {
+			case " ": // place
+				cmd := GameCommand{CommandType: CommandPlace, Position: *c.p}
+				go func() { c.cmdCh <- cmd }()
+			}
+			continue localClientInputLoop
+
 		}
 
-		c.d.Render(&g, *c.p)
+		if g.State == Finished {
+			switch char {
+			case "r":
+				cmd := GameCommand{CommandType: CommandReplay}
+				go func() { c.cmdCh <- cmd }()
+			}
+			continue localClientInputLoop
+		}
 	}
+
 }
 
 type LocalMultiClient struct {
@@ -144,65 +157,65 @@ func (c *LocalMultiClient) Run() {
 	defer close(input)
 
 	go func() {
-	localMultiClientInputLoop:
-		for char := range c.inputCh {
-			if g.State == Player1Turn || g.State == Player2Turn {
-				switch char {
-				// move position
-				case "h", "a": // ←
-					c.p.addX(-1, g.Board.N)
-					c.d.Render(&g, *c.p)
-				case "l", "d": // →
-					c.p.addX(1, g.Board.N)
-					c.d.Render(&g, *c.p)
-				case "j", "s": // ↓
-					c.p.addY(1, g.Board.N)
-					c.d.Render(&g, *c.p)
-				case "k", "w": // ↑
-					c.p.addY(-1, g.Board.N)
-					c.d.Render(&g, *c.p)
+	localMultiClientLoop:
+		for g = range c.gameCh1 {
+			// discard gameCh2
+			_ = <-c.gameCh2
 
-				// place
-				case " ":
-					cmd := GameCommand{CommandType: CommandPlace, Position: *c.p}
-					if g.State == Player1Turn {
-						go func() { c.cmdCh1 <- cmd }()
-					} else {
-						go func() { c.cmdCh2 <- cmd }()
-					}
-				}
+			if g.State == WaitingConnection {
+				c.cmdCh1 <- GameCommand{CommandType: CommandConnectionCheck}
+				c.cmdCh2 <- GameCommand{CommandType: CommandConnectionCheck}
 			}
 
-			if g.State == Finished {
-				switch char {
-				case "r":
-					cmd := GameCommand{CommandType: CommandReplay}
-					go func() { c.cmdCh1 <- cmd }()
-				}
+			if g.State == Quit {
+				break localMultiClientLoop
 			}
 
-			if char == "c" {
-				c.quitCh1 <- true
-				break localMultiClientInputLoop
-			}
+			c.d.Render(&g, *c.p)
 		}
 	}()
 
-localMultiClientLoop:
-	for g = range c.gameCh1 {
-		// discard gameCh2
-		_ = <-c.gameCh2
+localMultiClientInputLoop:
+	for char := range c.inputCh {
+		if g.State == Player1Turn || g.State == Player2Turn {
+			switch char {
+			// move position
+			case "h", "a": // ←
+				c.p.addX(-1, g.Board.N)
+				c.d.Render(&g, *c.p)
+			case "l", "d": // →
+				c.p.addX(1, g.Board.N)
+				c.d.Render(&g, *c.p)
+			case "j", "s": // ↓
+				c.p.addY(1, g.Board.N)
+				c.d.Render(&g, *c.p)
+			case "k", "w": // ↑
+				c.p.addY(-1, g.Board.N)
+				c.d.Render(&g, *c.p)
 
-		if g.State == WaitingConnection {
-			c.cmdCh1 <- GameCommand{CommandType: CommandConnectionCheck}
-			c.cmdCh2 <- GameCommand{CommandType: CommandConnectionCheck}
+			// place
+			case " ":
+				cmd := GameCommand{CommandType: CommandPlace, Position: *c.p}
+				if g.State == Player1Turn {
+					go func() { c.cmdCh1 <- cmd }()
+				} else {
+					go func() { c.cmdCh2 <- cmd }()
+				}
+			}
 		}
 
-		if g.State == Quit {
-			break localMultiClientLoop
+		if g.State == Finished {
+			switch char {
+			case "r":
+				cmd := GameCommand{CommandType: CommandReplay}
+				go func() { c.cmdCh1 <- cmd }()
+			}
 		}
 
-		c.d.Render(&g, *c.p)
+		if char == "c" {
+			c.quitCh1 <- true
+			break localMultiClientInputLoop
+		}
 	}
 }
 
