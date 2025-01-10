@@ -184,7 +184,7 @@ func startHostClient(n int) {
 
 	g := NewGame(&b, Human, AI)
 
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
+	player1CmdCh, hostCmdCh, player1GameCh, hostGameCh, player1QuitCh, hostQuitCh := g.Start()
 
 	cli1 := NewLocalClient(
 		player1GameCh,
@@ -195,10 +195,10 @@ func startHostClient(n int) {
 		&d,
 	)
 
-	cli2 := OnlineHostConnection{
-		gameCh: player2GameCh,
-		cmdCh:  player2CmdCh,
-		quitCh: player2QuitCh,
+	hostConn := OnlineHostConnection{
+		gameCh: hostGameCh,
+		cmdCh:  hostCmdCh,
+		quitCh: hostQuitCh,
 		Port:   8089,
 	}
 
@@ -207,23 +207,25 @@ func startHostClient(n int) {
 	wg.Add(1)
 	go func() {
 		cli1.Run()
+		fmt.Println("cli finished")
 		wg.Done()
 	}()
 
 	wg.Add(1)
 	go func() {
-		cli2.Run()
+		hostConn.Run()
+		fmt.Println("host closed")
 		wg.Done()
 	}()
 
 	wg.Wait()
 
 	close(player1CmdCh)
-	close(player2CmdCh)
+	close(hostCmdCh)
 	close(player1QuitCh)
-	close(player2QuitCh)
+	close(hostQuitCh)
 	close(player1GameCh)
-	close(player2GameCh)
+	close(hostGameCh)
 }
 
 func startGuestClient(url string) {
@@ -243,15 +245,18 @@ func startGuestClient(url string) {
 
 	conn, gameCh, cmdCh, quitCh := NewOnlineGuestConnection(id)
 
-	go func() {
-		if err := conn.Run(); err != nil {
-			fmt.Println("Can't connect 'http://localhost:8089'. Press 'c' to finish.")
-		}
-	}()
-
 	cli := NewLocalClient(gameCh, cmdCh, quitCh, inputCh, id, &d)
 
 	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		if err := conn.Run(); err != nil {
+			fmt.Println("Can't connect 'http://localhost:8089'. Press 'c' to finish.")
+			fmt.Printf("Error on guest conn: %v", err)
+		}
+		wg.Done()
+	}()
 
 	wg.Add(1)
 	go func() {

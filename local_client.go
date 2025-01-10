@@ -46,68 +46,69 @@ func (c *LocalClient) Run() {
 	defer close(input)
 
 	go func() {
-	localClientLoop:
-		for g = range c.gameCh {
-			if g.State == WaitingConnection &&
-				g.GetPlayer(c.PlayerId).Ready == false {
-				go func() {
-					c.cmdCh <- GameCommand{CommandType: CommandConnectionCheck}
-				}()
+	localClientInputLoop:
+		for char := range c.inputCh {
+
+			switch char {
+			// move position
+			case "h", "a": // ←
+				c.p.addX(-1, g.Board.N)
+				c.d.Render(&g, *c.p)
+				continue localClientInputLoop
+			case "l", "d": // →
+				c.p.addX(1, g.Board.N)
+				c.d.Render(&g, *c.p)
+				continue localClientInputLoop
+			case "j", "s": // ↓
+				c.p.addY(1, g.Board.N)
+				c.d.Render(&g, *c.p)
+				continue localClientInputLoop
+			case "k", "w": // ↑
+				c.p.addY(-1, g.Board.N)
+				c.d.Render(&g, *c.p)
+				continue localClientInputLoop
+			case "c": // quit
+				c.quitCh <- true
+				fmt.Println("Program finished.")
+				break localClientInputLoop
 			}
 
-			if g.State == Quit {
-				break localClientLoop
+			if g.IsMyTurn(c.PlayerId) {
+				switch char {
+				case " ": // place
+					cmd := GameCommand{CommandType: CommandPlace, Position: *c.p}
+					go func() { c.cmdCh <- cmd }()
+				}
+				continue localClientInputLoop
 			}
 
-			c.d.Render(&g, *c.p)
+			if g.State == Finished {
+				switch char {
+				case "r":
+					cmd := GameCommand{CommandType: CommandReplay}
+					go func() { c.cmdCh <- cmd }()
+				}
+				continue localClientInputLoop
+			}
 		}
 	}()
 
-localClientInputLoop:
-	for char := range c.inputCh {
-
-		switch char {
-		// move position
-		case "h", "a": // ←
-			c.p.addX(-1, g.Board.N)
-			c.d.Render(&g, *c.p)
-			continue localClientInputLoop
-		case "l", "d": // →
-			c.p.addX(1, g.Board.N)
-			c.d.Render(&g, *c.p)
-			continue localClientInputLoop
-		case "j", "s": // ↓
-			c.p.addY(1, g.Board.N)
-			c.d.Render(&g, *c.p)
-			continue localClientInputLoop
-		case "k", "w": // ↑
-			c.p.addY(-1, g.Board.N)
-			c.d.Render(&g, *c.p)
-			continue localClientInputLoop
-		case "c": // quit
-			go func() { c.quitCh <- true }()
-			fmt.Println("Program finished.")
-			break localClientInputLoop
+localClientLoop:
+	for g = range c.gameCh {
+		fmt.Printf("\rg received: %s\n", g.State.String())
+		if g.State == WaitingConnection &&
+			g.GetPlayer(c.PlayerId).Ready == false {
+			go func() {
+				c.cmdCh <- GameCommand{CommandType: CommandConnectionCheck}
+			}()
 		}
 
-		if g.IsMyTurn(c.PlayerId) {
-			switch char {
-			case " ": // place
-				cmd := GameCommand{CommandType: CommandPlace, Position: *c.p}
-				go func() { c.cmdCh <- cmd }()
-			}
-			continue localClientInputLoop
-
+		if g.State == Quit {
+			c.d.Render(&g, *c.p)
+			break localClientLoop
 		}
 
-		if g.State == Finished {
-			switch char {
-			case "r":
-				cmd := GameCommand{CommandType: CommandReplay}
-				go func() { c.cmdCh <- cmd }()
-			}
-			continue localClientInputLoop
-		}
+		c.d.Render(&g, *c.p)
 	}
 
 }

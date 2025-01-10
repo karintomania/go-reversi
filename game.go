@@ -17,6 +17,8 @@ func (gs GameState) String() string {
 	switch gs {
 	case Initialized:
 		return "Initialized"
+	case WaitingConnection:
+		return "WaitingConnection"
 	case Player1Turn:
 		return "Player1Turn"
 	case Player2Turn:
@@ -76,23 +78,30 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 	}
 
 	go func() {
+		fmt.Printf("inside game quit loop %s\n", g.State.String())
 		quit := false
 
 		select {
 		case quit = <-player1Quit:
+			fmt.Printf("received quit from 1 %s\n", g.State.String())
 		case quit = <-player2Quit:
+			fmt.Printf("received quit from 2 %s\n", g.State.String())
 		}
 
 		if quit {
+			fmt.Printf("sending signal %s\n", g.State.String())
 			g.State = Quit
+			g.Message = "The other player finished the game."
+
 			broadcast()
+			fmt.Printf("sent signal %s\n", g.State.String())
 		}
 	}()
 
 	go func() {
-
 	gameLoop:
 		for {
+			g.DebugMessage = fmt.Sprintf("send state: %sln", g.State.String())
 			switch g.State {
 			case Initialized:
 				g.Message = "Waiting for establish the connection"

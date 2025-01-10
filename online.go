@@ -21,57 +21,78 @@ type OnlineHostConnection struct {
 	Port   int
 }
 
-func (c *OnlineHostConnection) Run() {
-
+func (c *OnlineHostConnection) Run() error {
 	var wg sync.WaitGroup
+	var mu sync.Mutex
 
 	wg.Add(1)
 	handler := func(w http.ResponseWriter, r *http.Request) {
+		// establish websocket connection
 		upgrader := websocket.Upgrader{}
+
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			fmt.Printf("err %v", err)
-			return
+			// TODO: handle error properly
+			fmt.Errorf("Online Host Connection error %v", err)
 		}
-		defer conn.Close()
+
+		defer func() {
+			conn.Close()
+			fmt.Println("closed host conn")
+		}()
+
+		// channel to detect if game is quit
+		closeConnCh := make(chan bool)
 
 		// Send game info to guest
 		go func() {
+			writeWithMutex := func(g Game) error {
+				mu.Lock()
+				defer mu.Unlock()
+				return conn.WriteJSON(g)
+			}
+
 			for g := range c.gameCh {
-				err = conn.WriteJSON(g)
-				if err != nil {
+				if err = writeWithMutex(g); err != nil {
 					fmt.Errorf("%v", err)
-					break
+					closeConnCh <- true
+				}
+
+				if g.State == Quit {
+					closeConnCh <- true
 				}
 			}
 		}()
 
 		// Receive command from guest
-		for {
-			cmd := GameCommand{}
-			err := conn.ReadJSON(&cmd)
-			if err != nil {
-				// show error when websocket is closed unexpectedly
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-					fmt.Errorf("WebSocket Error %v", err)
+		go func() {
+			for {
+				cmd := GameCommand{}
+				err := conn.ReadJSON(&cmd)
+				if err != nil {
+					// show error when websocket is closed unexpectedly
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
+						fmt.Errorf("WebSocket Error %v", err)
+					}
+					closeConnCh <- true
 				}
-				break
+				fmt.Printf("Command received: %v\n", cmd)
+
+				if cmd.Quit {
+					c.quitCh <- true
+					closeConnCh <- true
+					fmt.Println("quit sent to game")
+				} else {
+					c.cmdCh <- cmd
+				}
 			}
+		}()
 
-			if cmd.Quit {
-				go func() { c.quitCh <- true }()
-			} else {
-				fmt.Println(cmd.CommandType)
-				c.cmdCh <- cmd
-			}
-
-		}
-
+		// wait for closeConn signal
+		<-closeConnCh
 		wg.Done()
-
 	}
 
-	// TODO: using mux to pass tests. Fix if it can be just http
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handler)
 
@@ -91,9 +112,10 @@ func (c *OnlineHostConnection) Run() {
 	// gracefully shutdown the server
 	err := server.Shutdown(context.TODO())
 	if err != nil {
-		fmt.Errorf("Failed to shutdown server: %v", err)
+		return fmt.Errorf("Failed to shutdown server: %v", err)
 	}
-	fmt.Println("server closed")
+
+	return nil
 }
 
 // guest client sends command to host
@@ -120,6 +142,7 @@ func NewOnlineGuestConnection(id PlayerId) (OnlineGuestConnection, chan Game, ch
 }
 
 func (c *OnlineGuestConnection) Run() error {
+	var mu sync.Mutex
 	// establish connection
 	url := "ws://localhost:8089/"
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
@@ -127,12 +150,22 @@ func (c *OnlineGuestConnection) Run() error {
 		return fmt.Errorf("Dial error: %v", err)
 	}
 
-	defer conn.Close()
+	defer func() {
+		fmt.Println("closing guest conn")
+		conn.Close()
+	}()
+
+	writeConnWithLock := func(cmd GameCommand) {
+		mu.Lock()
+		defer mu.Unlock()
+		conn.WriteJSON(cmd)
+	}
 
 	// listen to command
 	go func() {
 		for cmd := range c.cmdCh {
-			conn.WriteJSON(cmd)
+			fmt.Println("sending command")
+			writeConnWithLock(cmd)
 		}
 	}()
 
@@ -141,7 +174,8 @@ func (c *OnlineGuestConnection) Run() error {
 		for quit := range c.quitCh {
 			if quit {
 				cmd := GameCommand{Quit: true}
-				conn.WriteJSON(cmd)
+				writeConnWithLock(cmd)
+				fmt.Println("sent quit to host")
 			}
 		}
 	}()
@@ -153,13 +187,17 @@ func (c *OnlineGuestConnection) Run() error {
 onlineGuestClientLoop:
 	for {
 		if err := conn.ReadJSON(&g); err != nil {
-			return fmt.Errorf("Failed to read: %v", err)
+			// show error when websocket is closed unexpectedly
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
+				return fmt.Errorf("WebSocket Error: %v, %T", err, err)
+			}
+			break onlineGuestClientLoop
 		}
 
 		c.gameCh <- g
 
 		if g.State == WaitingConnection {
-			conn.WriteJSON(GameCommand{CommandType: CommandConnectionCheck})
+			writeConnWithLock(GameCommand{CommandType: CommandConnectionCheck})
 		}
 
 		if g.State == Quit {
