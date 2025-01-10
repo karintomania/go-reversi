@@ -95,10 +95,14 @@ func (d *Display) Render(g *Game, p Position) {
 
 	// print key bindings
 	print("")
-	if state == Player1Turn || state == Player2Turn {
-		print("[Keys] ←↓↑→: a,s,w,d | Place: <space> | Quit: c")
-	} else {
+
+	switch state {
+	case Quit, WaitingConnection:
+		print("[Keys] Quit: c")
+	case Finished:
 		print("[Keys] Play Again: r | Quit: c")
+	default:
+		print("[Keys] ←↓↑→: a,s,w,d | Place: <space> | Quit: c")
 	}
 
 	// move curosr up

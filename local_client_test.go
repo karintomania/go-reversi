@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -24,6 +25,8 @@ func (m *MockDisplay) Close() {
 }
 
 func TestLocalClientMovesPosition(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
+
 	gameCh := make(chan Game)
 	cmdCh := make(chan GameCommand)
 	quitCh := make(chan bool)
@@ -62,6 +65,8 @@ func TestLocalClientMovesPosition(t *testing.T) {
 }
 
 func TestLocalClientPlaceDisk(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
+
 	gameCh := make(chan Game)
 	cmdCh := make(chan GameCommand)
 	quitCh := make(chan bool)
@@ -90,6 +95,7 @@ func TestLocalClientPlaceDisk(t *testing.T) {
 }
 
 func TestLocalClientQuit(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
 	gameCh := make(chan Game)
 	cmdCh := make(chan GameCommand)
 	quitCh := make(chan bool)

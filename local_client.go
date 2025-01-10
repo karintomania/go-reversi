@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -69,7 +69,7 @@ func (c *LocalClient) Run() {
 				continue localClientInputLoop
 			case "c": // quit
 				c.quitCh <- true
-				fmt.Println("\rProgram finished.")
+				logger.Info("Program finished.")
 				break localClientInputLoop
 			}
 
@@ -95,7 +95,12 @@ func (c *LocalClient) Run() {
 
 localClientLoop:
 	for g = range c.gameCh {
-		fmt.Printf("\rPlayer %d received: %s\n", c.PlayerId, g.State.String())
+		logger.Debug(
+			"Game received",
+			slog.String("PlayerId", c.PlayerId.String()),
+			slog.String("g", g.State.String()),
+		)
+
 		if g.State == WaitingConnection &&
 			g.GetPlayer(c.PlayerId).Ready == false {
 			go func() {

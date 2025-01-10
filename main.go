@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log/slog"
 	"sync"
 )
 
@@ -25,9 +26,16 @@ func main() {
 	n := flag.Int("n", DEFAULT_N, "Dimension of the board. (Default: 8)")
 	playerNum := flag.Int("p", 1, "1 for Single Play, 2 for 2 Players. (Default: 1)")
 	server := flag.Bool("s", false, "Start game with server")
+	isDebugging := flag.Bool("d", false, "Debug info")
 	url := flag.String("url", "", "Specify game server url to connect")
 
 	flag.Parse()
+
+	if *isDebugging {
+		logger = NewLogger(slog.LevelDebug)
+	} else {
+		logger = NewLogger(slog.LevelError)
+	}
 
 	gm := Single
 
@@ -207,25 +215,18 @@ func startHostClient(n int) {
 	wg.Add(1)
 	go func() {
 		cli1.Run()
-		fmt.Println("cli finished")
+		logger.Debug("Client quit")
 		wg.Done()
 	}()
 
 	wg.Add(1)
 	go func() {
 		hostConn.Run()
-		fmt.Println("host closed")
+		logger.Debug("Host closed")
 		wg.Done()
 	}()
 
 	wg.Wait()
-
-	close(player1CmdCh)
-	close(hostCmdCh)
-	close(player1QuitCh)
-	close(hostQuitCh)
-	close(player1GameCh)
-	close(hostGameCh)
 }
 
 func startGuestClient(url string) {
@@ -243,7 +244,7 @@ func startGuestClient(url string) {
 
 	id := Player2Id
 
-	conn, gameCh, cmdCh, quitCh := NewOnlineGuestConnection(id)
+	conn, gameCh, cmdCh, quitCh := NewOnlineGuestConnection(id, url)
 
 	cli := NewLocalClient(gameCh, cmdCh, quitCh, inputCh, id, &d)
 
@@ -252,15 +253,18 @@ func startGuestClient(url string) {
 	wg.Add(1)
 	go func() {
 		if err := conn.Run(); err != nil {
-			fmt.Println("Can't connect 'http://localhost:8089'. Press 'c' to finish.")
-			fmt.Printf("Error on guest conn: %v", err)
+			fmt.Printf("Can't connect %s.", url)
+			logger.Debug("Error on guest conn: %v", slog.Any("err", err))
+		} else {
+			// if connection is successful, start client
+			wg.Add(1)
+			go func() {
+				cli.Run()
+				logger.Debug("Client closed")
+				wg.Done()
+			}()
 		}
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		cli.Run()
+		logger.Debug("Guest conn closed")
 		wg.Done()
 	}()
 

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -9,17 +11,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestWebConnections(t *testing.T) {
-	// if these tests run parallelly, it causes address conflict
-	testWebHostConnectionSendCommand(t)
+// func TestWebConnections(t *testing.T) {
+// 	// if these tests run parallelly, it causes address conflict
+// 	testWebHostConnectionSendCommand(t)
 
-	// wait for server to close
-	time.Sleep(50 * time.Millisecond)
+// 	// wait for server to close
+// 	time.Sleep(50 * time.Millisecond)
 
-	testWebGuestConnection(t)
-}
+//		testWebGuestConnection(t)
+//	}
+var mu sync.Mutex
 
-func testWebHostConnectionSendCommand(t *testing.T) {
+func TestWebHostConnectionSendCommand(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
+
+	mu.Lock()
+	defer func() {
+		mu.Unlock()
+		// wait for server to shut down
+		time.Sleep(50 * time.Millisecond)
+	}()
+
 	gameCh := make(chan Game)
 	cmdCh := make(chan GameCommand)
 	quitCh := make(chan bool)
@@ -28,7 +40,16 @@ func testWebHostConnectionSendCommand(t *testing.T) {
 
 	go client.Run()
 
-	// wait for server to start
+	// emulate game
+	b := Board{}
+	b.init(3)
+
+	g := NewGame(&b, Human, Human)
+	g.State = Player1Turn
+
+	gameCh <- g
+
+	// mock guest conn
 	time.Sleep(50 * time.Millisecond)
 
 	url := "ws://localhost:8089/"
@@ -39,6 +60,7 @@ func testWebHostConnectionSendCommand(t *testing.T) {
 
 	defer conn.Close()
 
+	// test command sending
 	cmd := GameCommand{CommandType: CommandPlace, Position: Position{1, 1}}
 	conn.WriteJSON(cmd)
 
@@ -48,21 +70,12 @@ func testWebHostConnectionSendCommand(t *testing.T) {
 	assert.Equal(t, cmd.Position.X, got.Position.X)
 	assert.Equal(t, cmd.Position.Y, got.Position.Y)
 
-	// init game
-	b := Board{}
-	b.init(3)
-
-	g := NewGame(&b, Human, Human)
-	g.State = Player1Turn
-
-	// send game
-	gameCh <- g
-
-	// receive game
+	// test receive game
 	var receivedGame Game
 	conn.ReadJSON(&receivedGame)
 
-	assert.Equal(t, Player1Turn, receivedGame.State)
+	time.Sleep(50 * time.Millisecond)
+	assert.Equal(t, Player1Turn.String(), receivedGame.State.String())
 
 	// quit game
 	cmd = GameCommand{Quit: true}
@@ -73,7 +86,16 @@ func testWebHostConnectionSendCommand(t *testing.T) {
 	assert.Equal(t, true, gotQuit)
 }
 
-func testWebGuestConnection(t *testing.T) {
+func TestWebGuestConnection(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
+
+	mu.Lock()
+	defer func() {
+		mu.Unlock()
+		// wait for server to shut down
+		time.Sleep(50 * time.Millisecond)
+	}()
+
 	hostGameCh := make(chan Game)
 	hostCmdCh := make(chan GameCommand)
 

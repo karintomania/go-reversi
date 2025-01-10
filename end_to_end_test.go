@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -9,6 +10,8 @@ import (
 )
 
 func TestEndToEnd(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
+
 	// start game
 	b := NewBoard(3)
 

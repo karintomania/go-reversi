@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"log/slog"
+)
 
 type GameState int
 
@@ -78,30 +81,28 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 	}
 
 	go func() {
-		fmt.Printf("\rinside game quit loop %s\n", g.State.String())
 		quit := false
 
 		select {
 		case quit = <-player1Quit:
-			fmt.Printf("\rreceived quit from 1 %s\n", g.State.String())
+			logger.Debug("Quit received", slog.String("id", Player1Id.String()))
 		case quit = <-player2Quit:
-			fmt.Printf("\rreceived quit from 2 %s\n", g.State.String())
+			logger.Debug("Quit received", slog.String("id", Player2Id.String()))
 		}
 
 		if quit {
-			fmt.Printf("\rsending signal %s\n", g.State.String())
 			g.State = Quit
 			g.Message = "The other player finished the game."
 
 			broadcast()
-			fmt.Printf("\rsent signal %s\n", g.State.String())
+			logger.Debug("Quit is sent")
 		}
 	}()
 
 	go func() {
 	gameLoop:
 		for {
-			g.DebugMessage = fmt.Sprintf("send state: %sln", g.State.String())
+			logger.Debug("State", slog.String("state", g.State.String()))
 			switch g.State {
 			case Initialized:
 				g.Message = "Waiting for establish the connection"
@@ -304,6 +305,17 @@ func GetPlayerTypeFromString(s string) PlayerType {
 
 type PlayerId int
 
+func (id PlayerId) String() string {
+	switch id {
+	case Player1Id:
+		return "Player 1"
+	case Player2Id:
+		return "Player 2"
+	default:
+		return "Undefined PlayerId"
+	}
+}
+
 const (
 	Player1Id PlayerId = iota
 	Player2Id
@@ -316,6 +328,19 @@ const (
 	CommandConnectionCheck
 	CommandReplay
 )
+
+func (c CommandType) String() string {
+	switch c {
+	case CommandPlace:
+		return "CommandPlace"
+	case CommandConnectionCheck:
+		return "CommandConnectionCheck"
+	case CommandReplay:
+		return "CommandReplay"
+	default:
+		return "Unknown"
+	}
+}
 
 type GameCommand struct {
 	CommandType CommandType
