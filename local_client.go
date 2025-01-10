@@ -69,7 +69,7 @@ func (c *LocalClient) Run() {
 				continue localClientInputLoop
 			case "c": // quit
 				c.quitCh <- true
-				fmt.Println("Program finished.")
+				fmt.Println("\rProgram finished.")
 				break localClientInputLoop
 			}
 
@@ -95,7 +95,7 @@ func (c *LocalClient) Run() {
 
 localClientLoop:
 	for g = range c.gameCh {
-		fmt.Printf("\rg received: %s\n", g.State.String())
+		fmt.Printf("\rPlayer %d received: %s\n", c.PlayerId, g.State.String())
 		if g.State == WaitingConnection &&
 			g.GetPlayer(c.PlayerId).Ready == false {
 			go func() {

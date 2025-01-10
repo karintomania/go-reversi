@@ -78,23 +78,23 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 	}
 
 	go func() {
-		fmt.Printf("inside game quit loop %s\n", g.State.String())
+		fmt.Printf("\rinside game quit loop %s\n", g.State.String())
 		quit := false
 
 		select {
 		case quit = <-player1Quit:
-			fmt.Printf("received quit from 1 %s\n", g.State.String())
+			fmt.Printf("\rreceived quit from 1 %s\n", g.State.String())
 		case quit = <-player2Quit:
-			fmt.Printf("received quit from 2 %s\n", g.State.String())
+			fmt.Printf("\rreceived quit from 2 %s\n", g.State.String())
 		}
 
 		if quit {
-			fmt.Printf("sending signal %s\n", g.State.String())
+			fmt.Printf("\rsending signal %s\n", g.State.String())
 			g.State = Quit
 			g.Message = "The other player finished the game."
 
 			broadcast()
-			fmt.Printf("sent signal %s\n", g.State.String())
+			fmt.Printf("\rsent signal %s\n", g.State.String())
 		}
 	}()
 

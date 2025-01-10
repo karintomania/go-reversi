@@ -38,7 +38,7 @@ func (c *OnlineHostConnection) Run() error {
 
 		defer func() {
 			conn.Close()
-			fmt.Println("closed host conn")
+			fmt.Println("\rHost: closed conn")
 		}()
 
 		// channel to detect if game is quit
@@ -67,23 +67,23 @@ func (c *OnlineHostConnection) Run() error {
 		// Receive command from guest
 		go func() {
 			for {
+				fmt.Printf("\rHost: waiting command\n")
 				cmd := GameCommand{}
 				err := conn.ReadJSON(&cmd)
 				if err != nil {
 					// show error when websocket is closed unexpectedly
 					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-						fmt.Errorf("WebSocket Error %v", err)
+						fmt.Printf("\rHost WebSocket Error %v\n", err)
 					}
 					closeConnCh <- true
 				}
-				fmt.Printf("Command received: %v\n", cmd)
+				fmt.Printf("\rHost: Command received: %v\n", cmd)
 
 				if cmd.Quit {
-					c.quitCh <- true
-					closeConnCh <- true
-					fmt.Println("quit sent to game")
+					go func() { c.quitCh <- true }()
+					fmt.Println("\rHost: quit sent to game")
 				} else {
-					c.cmdCh <- cmd
+					go func() { c.cmdCh <- cmd }()
 				}
 			}
 		}()
@@ -151,7 +151,7 @@ func (c *OnlineGuestConnection) Run() error {
 	}
 
 	defer func() {
-		fmt.Println("closing guest conn")
+		fmt.Println("\rGuest: closing guest conn")
 		conn.Close()
 	}()
 
@@ -164,7 +164,7 @@ func (c *OnlineGuestConnection) Run() error {
 	// listen to command
 	go func() {
 		for cmd := range c.cmdCh {
-			fmt.Println("sending command")
+			fmt.Println("\rGuest: sending command")
 			writeConnWithLock(cmd)
 		}
 	}()
@@ -175,7 +175,7 @@ func (c *OnlineGuestConnection) Run() error {
 			if quit {
 				cmd := GameCommand{Quit: true}
 				writeConnWithLock(cmd)
-				fmt.Println("sent quit to host")
+				fmt.Println("\rGuest: sent quit to host")
 			}
 		}
 	}()
@@ -189,16 +189,12 @@ onlineGuestClientLoop:
 		if err := conn.ReadJSON(&g); err != nil {
 			// show error when websocket is closed unexpectedly
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				return fmt.Errorf("WebSocket Error: %v, %T", err, err)
+				return fmt.Errorf("\rWebSocket Error: %v, %T", err, err)
 			}
 			break onlineGuestClientLoop
 		}
 
 		c.gameCh <- g
-
-		if g.State == WaitingConnection {
-			writeConnWithLock(GameCommand{CommandType: CommandConnectionCheck})
-		}
 
 		if g.State == Quit {
 			break onlineGuestClientLoop
