@@ -257,8 +257,8 @@ func startGuestClient(url string, port int) {
 		logger.Debug("Starting online guest")
 		err := conn.Run()
 		if err != nil {
-			fmt.Printf("\rCan't connect %s.", conn.Url)
-			logger.Debug("Error on guest conn: %v", slog.Any("err", err))
+			fmt.Printf("\rCan't connect %s.\n", conn.Url)
+			logger.Debug("Error on guest conn", slog.Any("err", err))
 		}
 		logger.Debug("Guest conn closed")
 		wg.Done()
