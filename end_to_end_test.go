@@ -84,14 +84,14 @@ func TestEndToEnd(t *testing.T) {
 
 	player1InputCh <- "d"
 	player1InputCh <- "d" // (2,0)
-	player1InputCh <- " " // placee
+	player1InputCh <- " " // place
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, Player2Turn.String(), g.State.String())
 
 	player2InputCh <- "d"
 	player2InputCh <- "d"
 	player2InputCh <- "s" // (2,1)
-	player2InputCh <- " " // placee
+	player2InputCh <- " " // place
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, Player1Turn.String(), g.State.String())
 
@@ -99,14 +99,14 @@ func TestEndToEnd(t *testing.T) {
 
 	player1InputCh <- "s"
 	player1InputCh <- "s" // (2,2)
-	player1InputCh <- " " // placee
+	player1InputCh <- " " // place
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, Player1Turn.String(), g.State.String())
 
 	t.Log(g.Board.String())
 	player1InputCh <- "a"
 	player1InputCh <- "a" // (0,2)
-	player1InputCh <- " " // placee
+	player1InputCh <- " " // place
 	time.Sleep(500 * time.Millisecond)
 	assert.Equal(t, Finished.String(), g.State.String())
 
@@ -117,7 +117,7 @@ func TestEndToEnd(t *testing.T) {
 
 	t.Log(g.Board.String())
 	player2InputCh <- "w" // (2,0)
-	player2InputCh <- " " // placee
+	player2InputCh <- " " // place
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, Player1Turn.String(), g.State.String())
 
@@ -125,14 +125,14 @@ func TestEndToEnd(t *testing.T) {
 	player1InputCh <- "d"
 	player1InputCh <- "d"
 	player1InputCh <- "w" // (2,1)
-	player1InputCh <- " " // placee
+	player1InputCh <- " " // place
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, Player2Turn.String(), g.State.String())
 
 	t.Log(g.Board.String())
 	player2InputCh <- "s"
 	player2InputCh <- "s" // (2,2)
-	player2InputCh <- " " // placee
+	player2InputCh <- " " // place
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, Player2Turn.String(), g.State.String())
 
@@ -140,7 +140,7 @@ func TestEndToEnd(t *testing.T) {
 
 	player2InputCh <- "a"
 	player2InputCh <- "a" // (2,2)
-	player2InputCh <- " " // placee
+	player2InputCh <- " " // place
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, Finished.String(), g.State.String())
 
