@@ -37,14 +37,14 @@ func TestEndToEnd(t *testing.T) {
 		gameCh: hostGameCh,
 		cmdCh:  hostCmdCh,
 		quitCh: hostQuitCh,
-		Port:   8089,
+		Port:   DEFAULT_PORT,
 	}
 
 	player2InputCh := make(chan string)
 
 	id := Player2Id
 
-	guestConn, player2GameCh, player2CmdCh, player2QuitCh := NewOnlineGuestConnection(id)
+	guestConn, player2GameCh, player2CmdCh, player2QuitCh := NewOnlineGuestConnection(id, "http://localhost", DEFAULT_PORT)
 
 	var wg sync.WaitGroup
 
@@ -64,7 +64,7 @@ func TestEndToEnd(t *testing.T) {
 		// wait for the host to start
 		time.Sleep(10 * time.Millisecond)
 		if err := guestConn.Run(); err != nil {
-			t.Errorf("Can't connect 'http://localhost:8089'. Press 'c' to finish.")
+			t.Errorf("Can't connect %s. Press 'c' to finish.", guestConn.Url)
 		}
 	}()
 

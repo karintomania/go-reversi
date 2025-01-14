@@ -104,9 +104,8 @@ func (c *OnlineHostConnection) Run() error {
 func (c *OnlineHostConnection) handleReceive(conn *websocket.Conn, closeConnCh chan bool) {
 	for {
 		cmd := GameCommand{}
-		err := conn.ReadJSON(&cmd)
-		if err != nil {
 
+		if err := conn.ReadJSON(&cmd); err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
 				logger.Error("Host WebSocket Error", slog.Any("err", err))
 			}
@@ -155,12 +154,12 @@ type OnlineGuestConnection struct {
 	Url      string
 }
 
-func NewOnlineGuestConnection(id PlayerId, url string) (OnlineGuestConnection, chan Game, chan GameCommand, chan bool) {
+func NewOnlineGuestConnection(id PlayerId, url string, port int) (OnlineGuestConnection, chan Game, chan GameCommand, chan bool) {
 	gameCh := make(chan Game)
 	cmdCh := make(chan GameCommand)
 	quitCh := make(chan bool)
 
-	wsUrl := convertToWebSocketURL(url)
+	wsUrl := convertToWebSocketURL(url, port)
 
 	conn := OnlineGuestConnection{
 		gameCh,
@@ -240,7 +239,7 @@ onlineGuestClientLoop:
 }
 
 // convertToWebSocketURL takes an HTTP/HTTPS URL and converts it to a WebSocket URL
-func convertToWebSocketURL(inputURL string) string {
+func convertToWebSocketURL(inputURL string, port int) string {
 	u, err := url.Parse(inputURL)
 	if err != nil {
 		logger.Error("Error on parsing URL", slog.Any("err", err))
@@ -259,7 +258,7 @@ func convertToWebSocketURL(inputURL string) string {
 	}
 
 	if u.Port() == "" {
-		u.Host = fmt.Sprintf("%s:%d", u.Hostname(), 8089)
+		u.Host = fmt.Sprintf("%s:%d", u.Hostname(), port)
 	}
 	return u.String()
 }

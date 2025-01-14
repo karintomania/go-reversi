@@ -10,7 +10,8 @@ import (
 var _ string = fmt.Sprint("test")
 
 const (
-	DEFAULT_N = 3
+	DEFAULT_N    = 3
+	DEFAULT_PORT = 4696
 )
 
 type GameMode int
@@ -28,6 +29,7 @@ func main() {
 	server := flag.Bool("s", false, "Start game with server")
 	isDebugging := flag.Bool("d", false, "Debug info")
 	url := flag.String("url", "", "Specify game server url to connect")
+	port := flag.Int("port", DEFAULT_PORT, "Specify game server's port")
 
 	flag.Parse()
 
@@ -55,10 +57,10 @@ func main() {
 		startLocalMultiGame(*n)
 
 	case OnlineHost:
-		startHostClient(*n)
+		startHostClient(*n, *port)
 
 	case OnlineGuest:
-		startGuestClient(*url)
+		startGuestClient(*url, *port)
 
 	default: // 1 player
 		startLocalSingleGame(*n)
@@ -174,7 +176,7 @@ func startLocalMultiGame(n int) {
 	close(player2QuitCh)
 }
 
-func startHostClient(n int) {
+func startHostClient(n int, port int) {
 	var b Board
 
 	b.init(n)
@@ -207,7 +209,7 @@ func startHostClient(n int) {
 		gameCh: hostGameCh,
 		cmdCh:  hostCmdCh,
 		quitCh: hostQuitCh,
-		Port:   8089,
+		Port:   port,
 	}
 
 	var wg sync.WaitGroup
@@ -229,7 +231,7 @@ func startHostClient(n int) {
 	wg.Wait()
 }
 
-func startGuestClient(url string) {
+func startGuestClient(url string, port int) {
 	_ = url
 	d := NewDisplay()
 	defer d.Close()
@@ -244,7 +246,7 @@ func startGuestClient(url string) {
 
 	id := Player2Id
 
-	conn, gameCh, cmdCh, quitCh := NewOnlineGuestConnection(id, url)
+	conn, gameCh, cmdCh, quitCh := NewOnlineGuestConnection(id, url, port)
 
 	cli := NewLocalClient(gameCh, cmdCh, quitCh, inputCh, id, &d)
 
@@ -252,20 +254,21 @@ func startGuestClient(url string) {
 
 	wg.Add(1)
 	go func() {
-		if err := conn.Run(); err != nil {
-			fmt.Printf("Can't connect %s.", url)
+		logger.Debug("Starting online guest")
+		err := conn.Run()
+		if err != nil {
+			fmt.Printf("\rCan't connect %s.", conn.Url)
 			logger.Debug("Error on guest conn: %v", slog.Any("err", err))
-		} else {
-			// if connection is successful, start client
-			wg.Add(1)
-			go func() {
-				cli.Run()
-				logger.Debug("Client closed")
-				wg.Done()
-			}()
 		}
 		logger.Debug("Guest conn closed")
 		wg.Done()
+	}()
+
+	// not using wg for this to prevent deadlock when guest connection errors
+	// which causes client to wait for quit signal
+	go func() {
+		cli.Run()
+		logger.Debug("Client closed")
 	}()
 
 	wg.Wait()

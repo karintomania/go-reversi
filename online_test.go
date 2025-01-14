@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -11,15 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// func TestWebConnections(t *testing.T) {
-// 	// if these tests run parallelly, it causes address conflict
-// 	testWebHostConnectionSendCommand(t)
-
-// 	// wait for server to close
-// 	time.Sleep(50 * time.Millisecond)
-
-//		testWebGuestConnection(t)
-//	}
 var mu sync.Mutex
 
 func TestWebHostConnectionSendCommand(t *testing.T) {
@@ -36,7 +28,7 @@ func TestWebHostConnectionSendCommand(t *testing.T) {
 	cmdCh := make(chan GameCommand)
 	quitCh := make(chan bool)
 
-	client := OnlineHostConnection{gameCh, cmdCh, quitCh, 8089}
+	client := OnlineHostConnection{gameCh, cmdCh, quitCh, DEFAULT_PORT}
 
 	go client.Run()
 
@@ -52,7 +44,7 @@ func TestWebHostConnectionSendCommand(t *testing.T) {
 	// mock guest conn
 	time.Sleep(50 * time.Millisecond)
 
-	url := "ws://localhost:8089/"
+	url := fmt.Sprintf("ws://localhost:%d/", DEFAULT_PORT)
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		t.Errorf("Dial error: %v", err)
@@ -106,7 +98,7 @@ func TestWebGuestConnection(t *testing.T) {
 	// wait for server to start
 	time.Sleep(50 * time.Millisecond)
 
-	conn, gameCh, cmdCh, quitCh := NewOnlineGuestConnection(Player2Id)
+	conn, gameCh, cmdCh, quitCh := NewOnlineGuestConnection(Player2Id, "ws://localhost", DEFAULT_PORT)
 
 	go func() {
 		if err := conn.Run(); err != nil {
@@ -170,7 +162,7 @@ func mockHost(t *testing.T, hostGameCh chan Game, hostCmdCh chan GameCommand) *h
 	mux.HandleFunc("/", handler)
 
 	server := &http.Server{
-		Addr:    ":8089",
+		Addr:    fmt.Sprintf(":%d", DEFAULT_PORT),
 		Handler: mux,
 	}
 
