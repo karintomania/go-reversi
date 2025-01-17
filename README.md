@@ -1,6 +1,12 @@
 # Go Reversi
-CLI application to play reversi in terminal.   
+Go revewsi is a CLI game to play reversi in terminal.  
+
+Single Play (Local)
 ![screen recording](https://github.com/user-attachments/assets/ec7d106e-3daf-41a5-995a-c1cdc0e7bf05)
+
+Online Play
+![online](https://github.com/user-attachments/assets/de284b2a-8fc6-446e-bfd1-9b85d7233486)
+
 
 # How to Install
 
