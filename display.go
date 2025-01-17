@@ -17,6 +17,11 @@ const (
 	Spacer          = "    "
 )
 
+type Renderer interface {
+	Render(g *Game, p Position)
+	Close()
+}
+
 type Display struct {
 	tm *term.Term
 }
@@ -33,7 +38,7 @@ func NewDisplay() Display {
 	return d
 }
 
-func (d *Display) Read(out chan string) {
+func (d *Display) Read(out chan<- string) {
 	readBytes := make([]byte, 1)
 	_, err := d.tm.Read(readBytes)
 	if err != nil {
@@ -55,8 +60,10 @@ func (d *Display) Close() {
 	d.tm.Restore()
 	d.tm.Close()
 }
-func (d *Display) Rendor(b *Board, state GameState, message string) {
-	p := b.Position
+
+func (d *Display) Render(g *Game, p Position) {
+	b := g.Board
+	state := g.State
 
 	n := len(b.Cells)
 
@@ -76,25 +83,31 @@ func (d *Display) Rendor(b *Board, state GameState, message string) {
 
 	// print turn if playing
 	print("")
-	if state == Playing {
+	if state == Player1Turn || state == Player2Turn {
 		print(fmt.Sprintf("[Turn] %s", b.Turn))
 	} else {
 		print("[Turn] -")
 	}
 
 	// print message
-	print(fmt.Sprintf("[Message] %s", message))
+	print(fmt.Sprintf("[Message] %s", g.Message))
+	// print debug message
+	print(fmt.Sprintf("[Debug] %s", g.DebugMessage))
 
 	// print key bindings
 	print("")
-	if state == Playing {
-		print("[Keys] ←↓↑→: a,s,w,d | Place: <space> | Quit: c")
-	} else {
+
+	switch state {
+	case Quit, WaitingConnection:
+		print("[Keys] Quit: c")
+	case Finished:
 		print("[Keys] Play Again: r | Quit: c")
+	default:
+		print("[Keys] ←↓↑→: a,s,w,d | Place: <space> | Quit: c")
 	}
 
 	// move curosr up
-	fmt.Printf("\033[%dA\r", n+5)
+	fmt.Printf("\033[%dA\r", n+6)
 }
 
 func printWithSpacer(s string) {

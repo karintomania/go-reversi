@@ -1,263 +1,210 @@
 package main
 
 import (
+	"log/slog"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestQuitGame(t *testing.T) {
-	var b Board
+func TestGameStart(t *testing.T) {
+	g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := gameTestInit(make([][]string, 0))
 
-	b.init(4)
+	mockSync(player1GameCh, player2GameCh)
+	assert.Equal(t, WaitingConnection.String(), g.State.String())
 
-	g := NewGame(&b, Human, Human)
+	cmd := GameCommand{CommandType: CommandConnectionCheck}
+	player1CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
 
-	ch := make(chan string)
+	player2CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
 
-	testStates := []GameState{Playing, Finished}
+	assert.Equal(t, Player1Turn, g.State)
 
-	for _, currentState := range testStates {
-		g.State = currentState
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{0, 2}}
+	player1CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
 
-		// quit
-		go func() {
-			ch <- "c"
-		}()
-		g.Progress(ch)
+	assert.Equal(t, Player2Turn, g.State)
 
-		if g.State != Quit {
-			t.Errorf("Can't quit from %s, got %s", currentState, g.State)
-		}
-	}
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{1, 2}}
+	player2CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+
+	assert.Equal(t, Player1Turn, g.State)
 }
 
-func TestGameMovingPosition(t *testing.T) {
-	var b Board
+func TestGamePass(t *testing.T) {
+	// var b Board
 
-	b.init(4)
+	// b.init(3)
 
-	g := NewGame(&b, Human, Human)
+	// b.FromStringCells(
+	// 	[][]string{
+	// 		{"n", "n", "n"},
+	// 		{"w", "b", "b"},
+	// 		{"b", "w", "w"},
+	// 	},
+	// )
 
-	ch := make(chan string)
+	// g := NewGame(&b, Human, Human)
 
-	// move to playing
-	g.Progress(ch)
+	// player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := g.Start()
 
-	// go left
-	go func() {
-		ch <- "d"
-	}()
-	g.Progress(ch)
-
-	if g.Board.Position.X != 1 || g.Board.Position.Y != 0 {
-		t.Errorf("got %v, but want %v", g.Board.Position, Position{1, 0})
-	}
-
-	// go right
-	go func() {
-		ch <- "a"
-	}()
-	g.Progress(ch)
-
-	if g.Board.Position.X != 0 || g.Board.Position.Y != 0 {
-		t.Errorf("got %v, but want %v", g.Board.Position, Position{0, 0})
-	}
-
-	// go down
-	go func() {
-		ch <- "s"
-	}()
-	g.Progress(ch)
-
-	if g.Board.Position.X != 0 || g.Board.Position.Y != 1 {
-		t.Errorf("got %v, but want %v", g.Board.Position, Position{0, 1})
-	}
-
-	// go up
-	go func() {
-		ch <- "w"
-	}()
-	g.Progress(ch)
-
-	if g.Board.Position.X != 0 || g.Board.Position.Y != 0 {
-		t.Errorf("got %v, but want %v", g.Board.Position, Position{0, 0})
-	}
-}
-
-func TestPassAndFinishGame(t *testing.T) {
-	var b Board
-
-	b.init(4)
-
-	b.FromStringCells(
+	g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := gameTestInit(
 		[][]string{
-			{"n", "w", "w", "b"},
-			{"w", "w", "w", "w"},
-			{"w", "w", "w", "w"},
-			{"w", "w", "w", "w"},
+			{"n", "n", "n"},
+			{"w", "b", "b"},
+			{"b", "w", "w"},
 		},
 	)
 
+	// connection check
+	mockSync(player1GameCh, player2GameCh)
+	cmd := GameCommand{CommandType: CommandConnectionCheck}
+	player1CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+
+	player2CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+
+	assert.Equal(t, Player1Turn, g.State)
+
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{0, 0}}
+	player1CmdCh <- cmd
+
+	mockSync(player1GameCh, player2GameCh)
+	assert.Equal(t, Player2Turn, g.State)
+	assert.Equal(t, HasBlack, g.Board.Cells[0][0])
+
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{2, 0}}
+	player2CmdCh <- cmd
+
+	mockSync(player1GameCh, player2GameCh)
+
+	// Player1 is skipped
+	assert.Equal(t, Player2Turn, g.State)
+	assert.Equal(t, HasWhite, g.Board.Cells[0][2])
+
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{1, 0}}
+	player2CmdCh <- cmd
+
+	mockSync(player1GameCh, player2GameCh)
+
+	// game is finished as both player can't place
+	assert.Equal(t, Finished, g.State)
+	assert.Equal(t, "Black 3, White 6, Player 2 won", g.Message)
+	assert.Equal(t, HasWhite, g.Board.Cells[0][1])
+}
+
+func TestReplay(t *testing.T) {
+	g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := gameTestInit(
+		[][]string{
+			{"n", "w", "w"},
+			{"w", "w", "w"},
+			{"b", "w", "w"},
+		},
+	)
+
+	// connection check
+	mockSync(player1GameCh, player2GameCh)
+	cmd := GameCommand{CommandType: CommandConnectionCheck}
+	player1CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+
+	player2CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+
+	assert.Equal(t, Player1Turn, g.State)
+
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{0, 0}}
+	player1CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+	assert.Equal(t, Finished, g.State)
+
+	// replay
+	cmd = GameCommand{CommandType: CommandReplay}
+	player1CmdCh <- cmd
+
+	// the turn is swapped
+	mockSync(player1GameCh, player2GameCh)
+	assert.Equal(t, Player2Turn, g.State)
+
+	g.Board.FromStringCells(
+		[][]string{
+			{"n", "w", "w"},
+			{"w", "w", "w"},
+			{"b", "w", "w"},
+		},
+	)
+
+	cmd = GameCommand{CommandType: CommandPlace, Position: Position{0, 0}}
+	player2CmdCh <- cmd
+	mockSync(player1GameCh, player2GameCh)
+
+	// finish the game
+	assert.Equal(t, Finished, g.State)
+
+	// replay
+	cmd = GameCommand{CommandType: CommandReplay}
+	player2CmdCh <- cmd
+
+	// the turn is swapped
+	mockSync(player1GameCh, player2GameCh)
+	assert.Equal(t, Player1Turn, g.State)
+}
+
+func TestGameQuit(t *testing.T) {
+	// var b Board
+
+	// b.init(3)
+
+	// // player 1
+	// g := NewGame(&b, Human, Human)
+
+	// _, _, _, _, player1QuitCh, _ := g.Start()
+
+	g, _, _, _, _, player1QuitCh, _ := gameTestInit(make([][]string, 0))
+
+	assert.Equal(t, Initialized, g.State)
+
+	player1QuitCh <- true
+	time.Sleep(10 * time.Millisecond)
+
+	assert.Equal(t, Quit, g.State)
+
+	// player 2
+	g, _, _, _, _, _, player2QuitCh := gameTestInit(make([][]string, 0))
+
+	assert.Equal(t, Initialized, g.State)
+
+	player2QuitCh <- true
+	time.Sleep(10 * time.Millisecond)
+
+	assert.Equal(t, Quit, g.State)
+}
+
+func gameTestInit(initBoard [][]string) (*Game, chan GameCommand, chan GameCommand, chan Game, chan Game, chan bool, chan bool) {
+	logger = NewLogger(slog.LevelInfo)
+
+	var b Board
+
+	b.init(3)
+
+	if len(initBoard) > 0 {
+		b.FromStringCells(initBoard)
+	}
+
 	g := NewGame(&b, Human, Human)
 
-	ch := make(chan string)
-	// move to playing
-	g.Progress(ch)
-
-	// place black
-	go func() {
-		ch <- " "
-	}()
-
-	g.Progress(ch)
-
-	if b.Cells[0][0] != HasBlack ||
-		b.Cells[0][1] != HasBlack ||
-		b.Cells[0][2] != HasBlack ||
-		b.Turn != White {
-		t.Errorf(
-			"Place failed, got %v, %v, %v, %v, \"%v\"",
-			b.Cells[0][0],
-			b.Cells[0][1],
-			b.Cells[0][2],
-			b.Turn,
-			g.Message,
-		)
-	}
-
-	// pass White
-	g.Progress(ch)
-
-	if g.passCount != 1 || b.Turn != Black {
-		t.Errorf("want 1, got %d, %v", g.passCount, b.Turn)
-	}
-	if g.Message != "Skipped ●" {
-		t.Errorf("want 'Skipped ●', got %s", g.Message)
-	}
-
-	// pass Black
-	g.Progress(ch)
-
-	if g.passCount != 2 || b.Turn != White {
-		t.Errorf("want 2, got %d, %v", g.passCount, b.Turn)
-	}
-
-	if g.Message != "Skipped ○" {
-		t.Errorf("want 'Skipped ○', got %s", g.Message)
-	}
-
-	// Finish game
-	g.Progress(ch)
-
-	if g.State != Finished {
-		t.Errorf("want Finished, got %v", g.State)
-	}
-
-	wantMsg := "Black 4, White 12, Player 2 won"
-	if g.Message != wantMsg {
-		t.Errorf("want '%s', got %s", wantMsg, g.Message)
-	}
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
+	return &g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh
 }
 
-func TestRetry(t *testing.T) {
-	var b Board
-
-	b.init(4)
-
-	b.FromStringCells(
-		[][]string{
-			{"b", "b", "b", "b"},
-			{"b", "b", "b", "b"},
-			{"b", "b", "b", "b"},
-			{"b", "b", "b", "b"},
-		},
-	)
-
-	g := NewGame(&b, Human, AI)
-
-	ch := make(chan string)
-
-	// move to playing
-	g.Progress(ch)
-
-	// pass black
-	g.Progress(ch)
-
-	// pass white
-	g.Progress(ch)
-
-	// finish game
-	g.Progress(ch)
-
-	if g.passCount != 2 || g.State != Finished {
-		t.Errorf("needs to be finished, got %d, %v", g.passCount, g.State)
-	}
-
-	// press retry
-	go func() {
-		ch <- "r"
-	}()
-
-	g.Progress(ch)
-
-	if g.passCount != 0 || g.State != Initialized {
-		t.Errorf("needs to be restarted, got %d, %s", g.passCount, g.State)
-	}
-
-	if g.Player1.Type != Human ||
-		g.Player1.Colour != White ||
-		g.Player2.Type != AI ||
-		g.Player2.Colour != Black {
-		t.Errorf(
-			"Player Type needs to be swapped after replay. %v, %v",
-			g.Player2.Type,
-			g.Player1.Type,
-		)
-	}
-}
-
-func TestAIPlayer(t *testing.T) {
-	var b Board
-
-	b.init(4)
-
-	b.FromStringCells(
-		[][]string{
-			{"n", "w", "b", "w"},
-			{"n", "b", "w", "w"},
-			{"w", "w", "w", "w"},
-			{"w", "w", "w", "w"},
-		},
-	)
-
-	g := NewGame(&b, AI, AI)
-
-	ch := make(chan string)
-	// move to playing
-	g.Progress(ch)
-
-	// place black
-	g.Progress(ch)
-
-	if b.Cells[0][0] != HasBlack ||
-		b.Cells[0][1] != HasBlack ||
-		b.Turn != White {
-		t.Errorf("got %v, %v, %v",
-			b.Cells[0][0],
-			b.Cells[0][1],
-			b.Turn,
-		)
-	}
-
-	// place white
-	g.Progress(ch)
-
-	if b.Cells[1][0] != HasWhite ||
-		b.Cells[1][1] != HasWhite ||
-		b.Turn != Black {
-		t.Errorf("got %v, %v, %v",
-			b.Cells[1][0],
-			b.Cells[1][1],
-			b.Turn,
-		)
-	}
+// discard channel output
+func mockSync(player1GameCh, player2GameCh chan Game) {
+	_ = <-player1GameCh
+	_ = <-player2GameCh
 }
