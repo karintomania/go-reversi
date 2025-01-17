@@ -82,17 +82,19 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 
 	go func() {
 		quit := false
+		quittingPlayer := g.Player1.Name
 
 		select {
 		case quit = <-player1Quit:
 			logger.Debug("Quit received", slog.String("id", Player1Id.String()))
 		case quit = <-player2Quit:
+			quittingPlayer = g.Player2.Name
 			logger.Debug("Quit received", slog.String("id", Player2Id.String()))
 		}
 
 		if quit {
 			g.State = Quit
-			g.Message = "The other player finished the game."
+			g.Message = fmt.Sprintf("%s finished the game.", quittingPlayer)
 
 			broadcast()
 			logger.Debug("Quit is sent")

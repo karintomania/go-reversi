@@ -73,16 +73,18 @@ func (gs *GuestStarter) Start(url string, port int) {
 	cli := NewLocalClient(gameCh, cmdCh, quitCh, gs.inputCh, closeCh, id, gs.d)
 
 	go func() {
-		fmt.Println("Trying to connect to the server...")
+		fmt.Print("Trying to connect to the server. Press Ctrl + C to quit...")
+
 		cli.Run()
 		logger.Debug("Client closed")
 	}()
 
 	go func() {
 		logger.Debug("Starting online guest")
+
 		err := conn.Run()
 		if err != nil {
-			fmt.Printf("\rCan't connect %s.\n", conn.Url)
+			fmt.Printf("\r\033[KCan't connect %s. Press Ctrl + C to quit.\n", conn.Url)
 			logger.Debug("Error on guest conn", slog.Any("err", err))
 		}
 		logger.Debug("Guest conn closed")

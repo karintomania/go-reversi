@@ -156,22 +156,35 @@ func (c *OnlineHostConnection) handleSend() {
 		}
 
 		if g.State == Quit {
-			c.isConnActive = false
+			c.closeWebsocket()
 		}
 	}
 }
 
-func (c *OnlineHostConnection) Close() error {
+func (c *OnlineHostConnection) closeWebsocket() {
 	if c.isConnActive {
 		c.isConnActive = false
-		c.conn.Close()
-	}
 
+		if err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+			logger.Error("Error sending close message: %v", slog.Any("err", err))
+		}
+
+		c.conn.Close()
+		logger.Debug("Closed Host websocket")
+	}
+}
+
+func (c *OnlineHostConnection) Close() error {
+	c.closeWebsocket()
+
+	time.Sleep(500 * time.Millisecond)
 	// gracefully shutdown the server
 	err := c.server.Shutdown(context.TODO())
 	if err != nil {
 		return fmt.Errorf("Failed to shutdown server: %w", err)
 	}
+
+	logger.Debug("Closed host connection")
 
 	return nil
 }

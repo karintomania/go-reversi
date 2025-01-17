@@ -187,7 +187,7 @@ func TestGameQuit(t *testing.T) {
 }
 
 func gameTestInit(initBoard [][]string) (*Game, chan GameCommand, chan GameCommand, chan Game, chan Game, chan bool, chan bool) {
-	logger = NewLogger(slog.LevelDebug)
+	logger = NewLogger(slog.LevelInfo)
 
 	var b Board
 

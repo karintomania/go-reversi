@@ -16,7 +16,7 @@ import (
 var _ string = fmt.Sprint("test")
 
 const (
-	DEFAULT_N    = 3
+	DEFAULT_N    = 8
 	DEFAULT_PORT = 4696
 )
 

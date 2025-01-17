@@ -85,9 +85,10 @@ func (c *OnlineGuestConnection) Run() error {
 	for {
 		if err := c.conn.ReadJSON(&g); err != nil {
 			// show error when websocket is closed unexpectedly
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
-				return fmt.Errorf("WebSocket Error: %v, %T", err, err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure) {
+				return fmt.Errorf("WebSocket Error: %w", err)
 			}
+			return nil
 		}
 
 		logger.Debug("Received game", slog.String("g", g.State.String()))
