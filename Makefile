@@ -41,3 +41,6 @@ run-local-image-server:
 
 run-local-image-client:
 	docker run --rm -it go-reversi:latest -url http://172.17.0.1 -d
+
+run-published-image-server:
+	docker run --rm -it -p 4696:4696 ghcr.io/karintomania/go-reversi:latest -s -d

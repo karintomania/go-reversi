@@ -69,7 +69,7 @@ Start a game server on port 4696:
 ./go-reversi-0.1-linux-x86 -s
 
 // with Docker
-docker run --rm -it ghcr.io/karintomania/go-reversi:latest -s
+docker run --rm -it -p 4696 ghcr.io/karintomania/go-reversi:latest -s
 ```
 
 Connect to a game server running on http://example.com:4696:  
@@ -88,7 +88,7 @@ Currently, if you use `https` with ngrok, the docker version of this app shows e
 You can avoid this by using `http` instead:
 ```
 // On server side
-docker run --rm -it ghcr.io/karintomania/go-reversi:latest -s
+docker run --rm -p 4696 -it ghcr.io/karintomania/go-reversi:latest -s
 ngrok http 4696 --scheme http
 // The output will look like this:
 // Forwarding http://aaaa-00-00-000-000.ngrok-free.app -> http://localhost:4696
