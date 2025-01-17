@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 
@@ -8,16 +9,10 @@ import (
 )
 
 func TestGameStart(t *testing.T) {
-	var b Board
-
-	b.init(3)
-
-	g := NewGame(&b, Human, Human)
-
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := g.Start()
+	g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := gameTestInit(make([][]string, 0))
 
 	mockSync(player1GameCh, player2GameCh)
-	assert.Equal(t, WaitingConnection, g.State)
+	assert.Equal(t, WaitingConnection.String(), g.State.String())
 
 	cmd := GameCommand{CommandType: CommandConnectionCheck}
 	player1CmdCh <- cmd
@@ -42,21 +37,29 @@ func TestGameStart(t *testing.T) {
 }
 
 func TestGamePass(t *testing.T) {
-	var b Board
+	// var b Board
 
-	b.init(3)
+	// b.init(3)
 
-	b.FromStringCells(
+	// b.FromStringCells(
+	// 	[][]string{
+	// 		{"n", "n", "n"},
+	// 		{"w", "b", "b"},
+	// 		{"b", "w", "w"},
+	// 	},
+	// )
+
+	// g := NewGame(&b, Human, Human)
+
+	// player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := g.Start()
+
+	g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := gameTestInit(
 		[][]string{
 			{"n", "n", "n"},
 			{"w", "b", "b"},
 			{"b", "w", "w"},
 		},
 	)
-
-	g := NewGame(&b, Human, Human)
-
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := g.Start()
 
 	// connection check
 	mockSync(player1GameCh, player2GameCh)
@@ -97,21 +100,13 @@ func TestGamePass(t *testing.T) {
 }
 
 func TestReplay(t *testing.T) {
-	var b Board
-
-	b.init(3)
-
-	b.FromStringCells(
+	g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := gameTestInit(
 		[][]string{
 			{"n", "w", "w"},
 			{"w", "w", "w"},
 			{"b", "w", "w"},
 		},
 	)
-
-	g := NewGame(&b, Human, Human)
-
-	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := g.Start()
 
 	// connection check
 	mockSync(player1GameCh, player2GameCh)
@@ -162,14 +157,16 @@ func TestReplay(t *testing.T) {
 }
 
 func TestGameQuit(t *testing.T) {
-	var b Board
+	// var b Board
 
-	b.init(3)
+	// b.init(3)
 
-	// player 1
-	g := NewGame(&b, Human, Human)
+	// // player 1
+	// g := NewGame(&b, Human, Human)
 
-	_, _, _, _, player1QuitCh, _ := g.Start()
+	// _, _, _, _, player1QuitCh, _ := g.Start()
+
+	g, _, _, _, _, player1QuitCh, _ := gameTestInit(make([][]string, 0))
 
 	assert.Equal(t, Initialized, g.State)
 
@@ -179,8 +176,7 @@ func TestGameQuit(t *testing.T) {
 	assert.Equal(t, Quit, g.State)
 
 	// player 2
-	g = NewGame(&b, Human, Human)
-	_, _, _, _, _, player2QuitCh := g.Start()
+	g, _, _, _, _, _, player2QuitCh := gameTestInit(make([][]string, 0))
 
 	assert.Equal(t, Initialized, g.State)
 
@@ -188,7 +184,23 @@ func TestGameQuit(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	assert.Equal(t, Quit, g.State)
+}
 
+func gameTestInit(initBoard [][]string) (*Game, chan GameCommand, chan GameCommand, chan Game, chan Game, chan bool, chan bool) {
+	logger = NewLogger(slog.LevelDebug)
+
+	var b Board
+
+	b.init(3)
+
+	if len(initBoard) > 0 {
+		b.FromStringCells(initBoard)
+	}
+
+	g := NewGame(&b, Human, Human)
+
+	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
+	return &g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh
 }
 
 // discard channel output

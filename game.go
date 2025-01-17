@@ -160,6 +160,7 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 				break gameLoop
 			}
 
+			logger.Debug("Broadcast state", slog.String("state", g.State.String()))
 			go broadcast()
 		}
 	}()

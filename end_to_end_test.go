@@ -24,27 +24,32 @@ func TestEndToEnd(t *testing.T) {
 
 	player1CmdCh, hostCmdCh, player1GameCh, hostGameCh, player1QuitCh, hostQuitCh := g.Start()
 
+	player1CloseCh := make(chan bool)
+
 	cli1 := NewLocalClient(
 		player1GameCh,
 		player1CmdCh,
 		player1QuitCh,
 		player1InputCh,
+		player1CloseCh,
 		Player1Id,
 		&d,
 	)
 
-	hostConn := OnlineHostConnection{
-		gameCh: hostGameCh,
-		cmdCh:  hostCmdCh,
-		quitCh: hostQuitCh,
-		Port:   DEFAULT_PORT,
-	}
+	hostConn := NewOnlineHostConnection(
+		hostGameCh,
+		hostCmdCh,
+		hostQuitCh,
+		DEFAULT_PORT,
+	)
 
 	player2InputCh := make(chan string)
 
 	id := Player2Id
 
 	guestConn, player2GameCh, player2CmdCh, player2QuitCh := NewOnlineGuestConnection(id, "http://localhost", DEFAULT_PORT)
+
+	player2CloseCh := make(chan bool)
 
 	var wg sync.WaitGroup
 
@@ -68,7 +73,14 @@ func TestEndToEnd(t *testing.T) {
 		}
 	}()
 
-	cli2 := NewLocalClient(player2GameCh, player2CmdCh, player2QuitCh, player2InputCh, id, &d)
+	cli2 := NewLocalClient(
+		player2GameCh,
+		player2CmdCh,
+		player2QuitCh,
+		player2InputCh,
+		player2CloseCh,
+		id,
+		&d)
 
 	wg.Add(1)
 	go func() {

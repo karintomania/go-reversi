@@ -7,10 +7,16 @@ import (
 	"sync"
 )
 
+// TODO:
+// Separate connections/client into separate file
+// Gracefully close connections
+// Rename clinet as controller
+// more tests
+
 var _ string = fmt.Sprint("test")
 
 const (
-	DEFAULT_N    = 8
+	DEFAULT_N    = 3
 	DEFAULT_PORT = 4696
 )
 
@@ -87,12 +93,15 @@ func startLocalSingleGame(n int) {
 		}
 	}()
 
+	closeCliCh := make(chan bool)
+
 	// local single
 	cli1 := NewLocalClient(
 		player1GameCh,
 		player1CmdCh,
 		player1QuitCh,
 		inputCh,
+		closeCliCh,
 		Player1Id,
 		&d,
 	)
@@ -104,26 +113,15 @@ func startLocalSingleGame(n int) {
 		PlayerId: Player2Id,
 	}
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
 	go func() {
 		cli1.Run()
-		wg.Done()
 	}()
 
-	wg.Add(1)
 	go func() {
 		cli2.Run()
-		wg.Done()
 	}()
 
-	wg.Wait()
-
-	close(player1CmdCh)
-	close(player2CmdCh)
-	close(player1GameCh)
-	close(player2GameCh)
+	<-closeCliCh
 }
 
 func startLocalMultiGame(n int) {
@@ -177,9 +175,6 @@ func startLocalMultiGame(n int) {
 }
 
 func startHostClient(n int, port int) {
-	var b Board
-
-	b.init(n)
 
 	d := NewDisplay()
 	defer d.Close()
@@ -192,47 +187,15 @@ func startHostClient(n int, port int) {
 		}
 	}()
 
-	g := NewGame(&b, Human, AI)
-
-	player1CmdCh, hostCmdCh, player1GameCh, hostGameCh, player1QuitCh, hostQuitCh := g.Start()
-
-	cli1 := NewLocalClient(
-		player1GameCh,
-		player1CmdCh,
-		player1QuitCh,
-		inputCh,
-		Player1Id,
-		&d,
-	)
-
-	hostConn := OnlineHostConnection{
-		gameCh: hostGameCh,
-		cmdCh:  hostCmdCh,
-		quitCh: hostQuitCh,
-		Port:   port,
+	hs := HostStarter{
+		d:       &d,
+		inputCh: inputCh,
 	}
 
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		cli1.Run()
-		logger.Debug("Client quit")
-		wg.Done()
-	}()
-
-	wg.Add(1)
-	go func() {
-		hostConn.Run()
-		logger.Debug("Host closed")
-		wg.Done()
-	}()
-
-	wg.Wait()
+	hs.Start(n, port)
 }
 
 func startGuestClient(url string, port int) {
-	_ = url
 	d := NewDisplay()
 	defer d.Close()
 
@@ -244,32 +207,10 @@ func startGuestClient(url string, port int) {
 		}
 	}()
 
-	id := Player2Id
+	gs := GuestStarter{
+		d:       &d,
+		inputCh: inputCh,
+	}
 
-	conn, gameCh, cmdCh, quitCh := NewOnlineGuestConnection(id, url, port)
-
-	cli := NewLocalClient(gameCh, cmdCh, quitCh, inputCh, id, &d)
-
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-	go func() {
-		logger.Debug("Starting online guest")
-		err := conn.Run()
-		if err != nil {
-			fmt.Printf("\rCan't connect %s.\n", conn.Url)
-			logger.Debug("Error on guest conn", slog.Any("err", err))
-		}
-		logger.Debug("Guest conn closed")
-		wg.Done()
-	}()
-
-	// not using wg for this to prevent deadlock when guest connection errors
-	// which causes client to wait for quit signal
-	go func() {
-		cli.Run()
-		logger.Debug("Client closed")
-	}()
-
-	wg.Wait()
+	gs.Start(url, port)
 }

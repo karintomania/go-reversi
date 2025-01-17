@@ -8,13 +8,14 @@ import (
 var _ = time.Second //TODO: debugging
 
 type LocalClient struct {
-	gameCh   <-chan Game
-	cmdCh    chan<- GameCommand
-	quitCh   chan<- bool
-	inputCh  <-chan string
-	PlayerId PlayerId
-	d        Renderer
-	p        *Position
+	gameCh     <-chan Game
+	cmdCh      chan<- GameCommand
+	quitCh     chan<- bool
+	closeCliCh chan<- bool
+	inputCh    <-chan string
+	PlayerId   PlayerId
+	d          Renderer
+	p          *Position
 }
 
 func NewLocalClient(
@@ -22,17 +23,19 @@ func NewLocalClient(
 	cmdCh chan<- GameCommand,
 	quitCh chan<- bool,
 	inputCh <-chan string,
+	closeCliCh chan<- bool,
 	PlayerId PlayerId,
 	d Renderer,
 ) LocalClient {
 	cli := LocalClient{
-		gameCh:   gameCh,
-		cmdCh:    cmdCh,
-		quitCh:   quitCh,
-		inputCh:  inputCh,
-		PlayerId: PlayerId,
-		d:        d,
-		p:        &Position{},
+		gameCh:     gameCh,
+		cmdCh:      cmdCh,
+		quitCh:     quitCh,
+		inputCh:    inputCh,
+		closeCliCh: closeCliCh,
+		PlayerId:   PlayerId,
+		d:          d,
+		p:          &Position{},
 	}
 
 	return cli
@@ -42,13 +45,9 @@ func (c *LocalClient) Run() {
 	// init game
 	var g Game
 
-	input := make(chan string)
-	defer close(input)
-
 	go func() {
 	localClientInputLoop:
 		for char := range c.inputCh {
-
 			switch char {
 			// move position
 			case "h", "a": // ←
@@ -68,7 +67,8 @@ func (c *LocalClient) Run() {
 				c.d.Render(&g, *c.p)
 				continue localClientInputLoop
 			case "c": // quit
-				c.quitCh <- true
+				go func() { c.quitCh <- true }()
+				c.closeCliCh <- true
 				logger.Info("Program finished.")
 				break localClientInputLoop
 			}
@@ -93,7 +93,7 @@ func (c *LocalClient) Run() {
 		}
 	}()
 
-localClientLoop:
+	// localClientLoop:
 	for g = range c.gameCh {
 		logger.Debug(
 			"Game received",
@@ -108,14 +108,8 @@ localClientLoop:
 			}()
 		}
 
-		if g.State == Quit {
-			c.d.Render(&g, *c.p)
-			break localClientLoop
-		}
-
 		c.d.Render(&g, *c.p)
 	}
-
 }
 
 type LocalMultiClient struct {

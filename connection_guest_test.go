@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
@@ -12,78 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var mu sync.Mutex
-
-func TestWebHostConnectionSendCommand(t *testing.T) {
-	logger = NewLogger(slog.LevelInfo)
-
-	mu.Lock()
-	defer func() {
-		mu.Unlock()
-		// wait for server to shut down
-		time.Sleep(50 * time.Millisecond)
-	}()
-
-	gameCh := make(chan Game)
-	cmdCh := make(chan GameCommand)
-	quitCh := make(chan bool)
-
-	client := OnlineHostConnection{gameCh, cmdCh, quitCh, DEFAULT_PORT}
-
-	go client.Run()
-
-	// emulate game
-	b := Board{}
-	b.init(3)
-
-	g := NewGame(&b, Human, Human)
-	g.State = Player1Turn
-
-	gameCh <- g
-
-	// mock guest conn
-	time.Sleep(50 * time.Millisecond)
-
-	url := fmt.Sprintf("ws://localhost:%d/", DEFAULT_PORT)
-	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
-	if err != nil {
-		t.Errorf("Dial error: %v", err)
-	}
-
-	defer conn.Close()
-
-	// test command sending
-	cmd := GameCommand{CommandType: CommandPlace, Position: Position{1, 1}}
-	conn.WriteJSON(cmd)
-
-	got := <-cmdCh
-
-	assert.Equal(t, cmd.CommandType, got.CommandType)
-	assert.Equal(t, cmd.Position.X, got.Position.X)
-	assert.Equal(t, cmd.Position.Y, got.Position.Y)
-
-	// test receive game
-	var receivedGame Game
-	conn.ReadJSON(&receivedGame)
-
-	time.Sleep(50 * time.Millisecond)
-	assert.Equal(t, Player1Turn.String(), receivedGame.State.String())
-
-	// quit game
-	cmd = GameCommand{Quit: true}
-	conn.WriteJSON(cmd)
-
-	gotQuit := <-quitCh
-
-	assert.Equal(t, true, gotQuit)
-}
-
 func TestWebGuestConnection(t *testing.T) {
 	logger = NewLogger(slog.LevelInfo)
 
-	mu.Lock()
+	muTest.Lock()
 	defer func() {
-		mu.Unlock()
+		muTest.Unlock()
 		// wait for server to shut down
 		time.Sleep(50 * time.Millisecond)
 	}()

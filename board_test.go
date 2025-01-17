@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsCellTaken(t *testing.T) {
+func TestBoardIsCellTaken(t *testing.T) {
 	cases := []struct {
 		Input Position
 		Want  bool
@@ -36,7 +36,7 @@ func TestIsCellTaken(t *testing.T) {
 	}
 }
 
-func TestGetCellsToFlip(t *testing.T) {
+func TestBoardGetCellsToFlip(t *testing.T) {
 	b := Board{}
 
 	b.init(4)

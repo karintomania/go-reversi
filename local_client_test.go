@@ -25,16 +25,7 @@ func (m *MockDisplay) Close() {
 }
 
 func TestLocalClientMovesPosition(t *testing.T) {
-	logger = NewLogger(slog.LevelInfo)
-
-	gameCh := make(chan Game)
-	cmdCh := make(chan GameCommand)
-	quitCh := make(chan bool)
-	inputCh := make(chan string)
-
-	d := MockDisplay{}
-
-	client := NewLocalClient(gameCh, cmdCh, quitCh, inputCh, Player1Id, &d)
+	gameCh, _, _, inputCh, _, d, client := localClientTestInitChannels()
 
 	go client.Run()
 
@@ -65,16 +56,7 @@ func TestLocalClientMovesPosition(t *testing.T) {
 }
 
 func TestLocalClientPlaceDisk(t *testing.T) {
-	logger = NewLogger(slog.LevelInfo)
-
-	gameCh := make(chan Game)
-	cmdCh := make(chan GameCommand)
-	quitCh := make(chan bool)
-	inputCh := make(chan string)
-
-	d := MockDisplay{}
-
-	client := NewLocalClient(gameCh, cmdCh, quitCh, inputCh, Player1Id, &d)
+	gameCh, cmdCh, _, inputCh, _, _, client := localClientTestInitChannels()
 
 	go client.Run()
 
@@ -95,15 +77,7 @@ func TestLocalClientPlaceDisk(t *testing.T) {
 }
 
 func TestLocalClientQuit(t *testing.T) {
-	logger = NewLogger(slog.LevelInfo)
-	gameCh := make(chan Game)
-	cmdCh := make(chan GameCommand)
-	quitCh := make(chan bool)
-	inputCh := make(chan string)
-
-	d := MockDisplay{}
-
-	client := NewLocalClient(gameCh, cmdCh, quitCh, inputCh, Player1Id, &d)
+	_, _, quitCh, inputCh, _, _, client := localClientTestInitChannels()
 
 	go client.Run()
 
@@ -113,4 +87,26 @@ func TestLocalClientQuit(t *testing.T) {
 	quit := <-quitCh
 
 	assert.Equal(t, true, quit)
+}
+
+func localClientTestInitChannels() (
+	chan Game,
+	chan GameCommand,
+	chan bool,
+	chan string,
+	chan bool,
+	*MockDisplay, LocalClient) {
+	logger = NewLogger(slog.LevelInfo)
+
+	gameCh := make(chan Game)
+	cmdCh := make(chan GameCommand)
+	quitCh := make(chan bool)
+	inputCh := make(chan string)
+	closeCh := make(chan bool)
+
+	d := MockDisplay{}
+
+	client := NewLocalClient(gameCh, cmdCh, quitCh, inputCh, closeCh, Player1Id, &d)
+
+	return gameCh, cmdCh, quitCh, inputCh, closeCh, &d, client
 }

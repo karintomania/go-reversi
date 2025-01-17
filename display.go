@@ -60,6 +60,7 @@ func (d *Display) Close() {
 	d.tm.Restore()
 	d.tm.Close()
 }
+
 func (d *Display) Render(g *Game, p Position) {
 	b := g.Board
 	state := g.State
