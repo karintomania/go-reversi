@@ -16,6 +16,16 @@ const (
 	Quit
 )
 
+const (
+	messageWaiting   string = "⏳  Waiting for another player..."
+	messageGameStart string = "💫  Game Start!"
+	messageTurn      string = "%s  %s's turn"
+	messageSkipped   string = "🚨  %s  %s is skipped"
+	messageWin       string = "Black %d, White %d, %s won ✨"
+	messageDraw      string = "Black %d, White %d, Draw 👏"
+	messageQuit      string = "%s left the game 🚪"
+)
+
 func (gs GameState) String() string {
 	switch gs {
 	case Initialized:
@@ -36,12 +46,12 @@ func (gs GameState) String() string {
 }
 
 type Game struct {
-	Board        *Board
-	State        GameState
-	Player1      Player
-	Player2      Player
-	Message      string
-	DebugMessage string
+	Board   *Board
+	State   GameState
+	Player1 Player
+	Player2 Player
+	Info    GameInfo
+	Message string
 }
 
 func NewGame(b *Board, type1, type2 PlayerType) Game {
@@ -59,7 +69,7 @@ func NewGame(b *Board, type1, type2 PlayerType) Game {
 		Initialized,
 		Player{name1, false, type1, Black},
 		Player{name2, false, type2, White},
-		"",
+		GameInfo{},
 		"",
 	}
 }
@@ -80,6 +90,7 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 		player2Game <- *g
 	}
 
+	// listen to quit chans
 	go func() {
 		quit := false
 		quittingPlayer := g.Player1.Name
@@ -94,7 +105,7 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 
 		if quit {
 			g.State = Quit
-			g.Message = fmt.Sprintf("%s finished the game.", quittingPlayer)
+			g.Message = fmt.Sprintf(messageQuit, quittingPlayer)
 
 			broadcast()
 			logger.Debug("Quit is sent")
@@ -107,7 +118,7 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 			logger.Debug("State", slog.String("state", g.State.String()))
 			switch g.State {
 			case Initialized:
-				g.Message = "Waiting for establish the connection"
+				g.Message = messageWaiting
 				g.State = WaitingConnection
 
 			case WaitingConnection:
@@ -124,8 +135,8 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 				}
 
 				if g.Player1.Ready && g.Player2.Ready {
+					g.Message = messageGameStart
 					g.updateTurnFromBoard()
-					g.Message = g.getPlayerTypesMessage()
 				}
 
 			case Player1Turn, Player2Turn:
@@ -155,7 +166,6 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 				case CommandReplay:
 					g.replay()
 					g.updateTurnFromBoard()
-					g.Message = g.getPlayerTypesMessage()
 				}
 
 			case Quit:
@@ -181,7 +191,7 @@ func (g *Game) place(p Position) {
 
 	// deal with pass
 	passedCount := 0
-	for !b.HasPlayableCells() && passedCount <= 2 {
+	for !b.HasLegalCells() && passedCount <= 2 {
 		g.pass()
 
 		passedCount++
@@ -189,8 +199,18 @@ func (g *Game) place(p Position) {
 
 	if passedCount >= 2 {
 		g.finish()
-	} else if b.HasPlayableCells() {
-		g.updateTurnFromBoard()
+		return
+	}
+
+	g.updateTurnFromBoard()
+
+	// show skip message
+	if passedCount > 0 {
+		skipped := g.GetAnotherPlayer()
+		g.Message = fmt.Sprintf(messageSkipped, skipped.Colour, skipped.Name)
+	} else {
+		playing := g.GetCurrentPlayer()
+		g.Message = fmt.Sprintf(messageTurn, playing.Colour, playing.Name)
 	}
 }
 
@@ -216,8 +236,7 @@ func (g *Game) finish() {
 }
 
 func (g *Game) generateResultMessage() string {
-	totalB, totalW := g.Board.Finish()
-	m := fmt.Sprintf("Black %d, White %d,", totalB, totalW)
+	totalB, totalW := g.Board.Count()
 
 	var playerB, playerW Player
 	if g.Player1.Colour == Black {
@@ -228,19 +247,20 @@ func (g *Game) generateResultMessage() string {
 		playerW = g.Player1
 	}
 
+	var m string
+
 	if totalB > totalW {
-		m = fmt.Sprintf("%s %s won", m, playerB.Name)
+		m = fmt.Sprintf(messageWin, totalB, totalW, playerB.Name)
 	} else if totalB < totalW {
-		m = fmt.Sprintf("%s %s won", m, playerW.Name)
+		m = fmt.Sprintf(messageWin, totalB, totalW, playerW.Name)
 	} else {
-		m = fmt.Sprintf("%s Draw", m)
+		m = fmt.Sprintf(messageDraw, totalB, totalW)
 	}
 
 	return m
 }
 
 func (g *Game) pass() {
-	g.Message = fmt.Sprintf("Skipped %s", g.Board.Turn.String())
 	g.Board.Pass()
 }
 
@@ -260,15 +280,20 @@ func (g *Game) IsMyTurn(id PlayerId) bool {
 	}
 }
 
-func (g *Game) getPlayerTypesMessage() string {
+func (g *Game) GetCurrentPlayer() *Player {
+	if g.State == Player1Turn {
+		return &g.Player1
+	} else {
+		return &g.Player2
+	}
+}
 
-	return fmt.Sprintf(
-		"%s: %s, %s: %s",
-		g.Player1.Name,
-		g.Player1.Colour,
-		g.Player2.Name,
-		g.Player2.Colour,
-	)
+func (g *Game) GetAnotherPlayer() *Player {
+	if g.State == Player1Turn {
+		return &g.Player2
+	} else {
+		return &g.Player1
+	}
 }
 
 type Player struct {
@@ -304,6 +329,41 @@ func GetPlayerTypeFromString(s string) PlayerType {
 		return AI
 	}
 	return Human
+}
+
+type GameInfo struct {
+	Player1Info string
+	Player2Info string
+}
+
+func (g *Game) GetInfo() *GameInfo {
+	p1Name := fmt.Sprintf("%-15s", g.Player1.Name)
+	p2Name := fmt.Sprintf("%-15s", g.Player2.Name)
+
+	totalB, totalW := g.Board.Count()
+
+	var p1Colour, p2Colour string
+
+	if g.Player1.Colour == Black {
+		p1Colour = fmt.Sprintf("%s x%d", BlackString, totalB)
+		p2Colour = fmt.Sprintf("%s x%d", WhiteString, totalW)
+	} else {
+		p1Colour = fmt.Sprintf("%s x%d", WhiteString, totalW)
+		p2Colour = fmt.Sprintf("%s x%d", BlackString, totalB)
+	}
+
+	p1 := fmt.Sprintf("%s %s", p1Name, p1Colour)
+	p2 := fmt.Sprintf("%s %s", p2Name, p2Colour)
+
+	if g.State == Player1Turn {
+		p1 += " *"
+	}
+
+	if g.State == Player2Turn {
+		p2 += " *"
+	}
+
+	return &GameInfo{p1, p2}
 }
 
 type PlayerId int

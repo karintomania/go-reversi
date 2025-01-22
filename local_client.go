@@ -2,6 +2,7 @@ package main
 
 import (
 	"log/slog"
+	"sync"
 	"time"
 )
 
@@ -230,9 +231,7 @@ func (c *AiClient) Run() {
 AiClientLoop:
 	for g := range c.gameCh {
 		if g.IsMyTurn(c.PlayerId) {
-			p := getAiPosition(g.Board)
-			cmd := GameCommand{CommandType: CommandPlace, Position: p}
-			// time.Sleep(5 * time.Second)
+			cmd := c.placeWithMinimumLength(&g)
 			c.cmdCh <- cmd
 		}
 
@@ -244,4 +243,24 @@ AiClientLoop:
 			break AiClientLoop
 		}
 	}
+}
+
+// AI's turn will take max(minimum length, position calculation time)
+func (c *AiClient) placeWithMinimumLength(g *Game) GameCommand {
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go func() {
+		time.Sleep(700 * time.Millisecond)
+		wg.Done()
+	}()
+
+	p := getAiPosition(g.Board)
+
+	cmd := GameCommand{CommandType: CommandPlace, Position: p}
+
+	wg.Wait()
+
+	return cmd
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -95,7 +96,7 @@ func TestGamePass(t *testing.T) {
 
 	// game is finished as both player can't place
 	assert.Equal(t, Finished, g.State)
-	assert.Equal(t, "Black 3, White 6, Player 2 won", g.Message)
+	assert.Equal(t, fmt.Sprintf(messageWin, 3, 6, "Player 2"), g.Message)
 	assert.Equal(t, HasWhite, g.Board.Cells[0][1])
 }
 
