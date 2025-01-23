@@ -63,11 +63,6 @@ func (b *Board) Pass() {
 
 }
 
-func (b *Board) PlaceByAi() {
-	p := getAiPosition(b)
-	b.Place(p)
-}
-
 func (b *Board) Place(p Position) error {
 	// check if the cell is taken
 	isValid := b.isCellTaken(p)
@@ -100,7 +95,7 @@ func (b *Board) Place(p Position) error {
 	return nil
 }
 
-func (b *Board) HasPlayableCells() bool {
+func (b *Board) HasLegalCells() bool {
 	for x := 0; x < b.N; x++ {
 		for y := 0; y < b.N; y++ {
 			if b.Cells[y][x] != HasNothing {
@@ -283,7 +278,7 @@ func (b *Board) GetCellsToFlip(x, y int) []CellToFlip {
 	return cells
 }
 
-func (b *Board) Finish() (int, int) {
+func (b *Board) Count() (int, int) {
 	var totalB, totalW int
 
 	for x := 0; x < b.N; x++ {

@@ -62,6 +62,13 @@ func (d *Display) Close() {
 }
 
 func (d *Display) Render(g *Game, p Position) {
+
+	// print message
+	print("")
+	print(fmt.Sprintf(" %s", g.GetInfo().Player1Info))
+	print(fmt.Sprintf(" %s", g.GetInfo().Player2Info))
+	print("")
+
 	b := g.Board
 	state := g.State
 
@@ -81,18 +88,10 @@ func (d *Display) Render(g *Game, p Position) {
 		printWithSpacer(rowStr)
 	}
 
-	// print turn if playing
 	print("")
-	if state == Player1Turn || state == Player2Turn {
-		print(fmt.Sprintf("[Turn] %s", b.Turn))
-	} else {
-		print("[Turn] -")
-	}
 
 	// print message
 	print(fmt.Sprintf("[Message] %s", g.Message))
-	// print debug message
-	print(fmt.Sprintf("[Debug] %s", g.DebugMessage))
 
 	// print key bindings
 	print("")
@@ -107,7 +106,7 @@ func (d *Display) Render(g *Game, p Position) {
 	}
 
 	// move curosr up
-	fmt.Printf("\033[%dA\r", n+6)
+	fmt.Printf("\033[%dA\r", n+8)
 }
 
 func printWithSpacer(s string) {
