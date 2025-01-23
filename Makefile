@@ -2,7 +2,7 @@
 OUTPUT_DIR=releases
 
 # Get the version from the source file
-VERSION=0.2.0
+VERSION=0.2.1
 
 .PHONY: build-all macos macos-arm64 linux clean print-version run-local-image-server run-local-image-client
 
