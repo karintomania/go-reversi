@@ -329,9 +329,9 @@ func (b *Board) String() string {
 type State int
 
 const (
-	HasNothing State = iota
-	HasBlack
-	HasWhite
+	HasNothing State = 0
+	HasBlack   State = 1
+	HasWhite   State = 2
 )
 
 func (s State) String() string {
