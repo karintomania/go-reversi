@@ -11,8 +11,6 @@ type Mobility map[Idx]map[Turn][][]int
 type Lines map[LineId]Idx
 type LineId int
 
-type Idx int // state of one line i.e., if there is no disk, Idx = 0
-
 type LineForCell struct {
 	LineId LineId
 	Local  int // local position of the cell in the idx
@@ -50,7 +48,7 @@ func (b *IndexedBoard) init() {
 	b.IdxN = pow(3, b.N)
 
 	b.LineForCells = b.calcLineForCells(b.N)
-	b.mobility = b.calcMobility()
+	b.mobility = NewMobility(b.N)
 
 	b.initLines()
 }
@@ -59,7 +57,7 @@ func (b *IndexedBoard) initLines() {
 	b.Lines = make(map[LineId]Idx, b.LineN)
 
 	for i := 0; i < b.LineN; i++ {
-		b.Lines[LineId(i)] = 0
+		b.Lines[LineId(i)] = Idx{0, b.N}
 	}
 
 	middle1 := b.N/2 - 1
@@ -69,10 +67,10 @@ func (b *IndexedBoard) initLines() {
 	initW1 := b.N*(middle1) + middle2
 	initW2 := b.N*(middle2) + middle1
 
-	b.Place(initB1, Black)
-	b.Place(initB2, Black)
-	b.Place(initW1, White)
-	b.Place(initW2, White)
+	b.PlaceWithoutCheck(initB1, Black)
+	b.PlaceWithoutCheck(initB2, Black)
+	b.PlaceWithoutCheck(initW1, White)
+	b.PlaceWithoutCheck(initW2, White)
 }
 
 func (b *IndexedBoard) calcLineN(n int) int {
@@ -155,19 +153,21 @@ func (b *IndexedBoard) calcLineForCells(n int) [][]LineForCell {
 	return lineForCells
 }
 
-func (b *IndexedBoard) calcMobility() Mobility {
-	mobility := make(map[Idx]map[Turn][][]int, b.IdxN)
+func NewMobility(n int) Mobility {
+
+	idxN := pow(3, n)
+	mobility := make(map[Idx]map[Turn][][]int, idxN)
 
 	// initialise
-	for i := 0; i < b.IdxN; i++ {
-		idx := Idx(i)
+	for i := 0; i < idxN; i++ {
+		idx := Idx{i, n}
 
-		blackLineFlipping := make([][]int, b.N)
+		blackLineFlipping := make([][]int, n)
 
-		whiteLineFlipping := make([][]int, b.N)
+		whiteLineFlipping := make([][]int, n)
 
 		// init each indexes
-		for j := 0; j < b.N; j++ {
+		for j := 0; j < n; j++ {
 			blackLineFlipping[j] = []int{0, 0}
 			whiteLineFlipping[j] = []int{0, 0}
 		}
@@ -180,13 +180,13 @@ func (b *IndexedBoard) calcMobility() Mobility {
 		mobility[idx] = turnMap
 	}
 
-	for i := 0; i < b.IdxN; i++ {
-		idx := Idx(i)
+	for i := 0; i < idxN; i++ {
+		idx := Idx{i, n}
 	loopLocal:
-		for local := 0; local < b.N; local++ {
+		for local := 0; local < n; local++ {
 			var backwardFlip, forwardFlip int
 
-			if getCellState(idx, local) != HasNothing {
+			if idx.GetLocalState(local) != HasNothing {
 				// already taken
 				mobility[idx][Black][local] = []int{0, 0}
 				mobility[idx][White][local] = []int{0, 0}
@@ -203,7 +203,7 @@ func (b *IndexedBoard) calcMobility() Mobility {
 					opponentState = HasBlack
 				}
 
-				backwardFlip, forwardFlip = b.getFlippingCells(idx, local, selfState, opponentState)
+				backwardFlip, forwardFlip = getFlippingCells(idx, local, n, selfState, opponentState)
 
 				mobility[idx][turn][local] = []int{backwardFlip, forwardFlip}
 			}
@@ -213,14 +213,14 @@ func (b *IndexedBoard) calcMobility() Mobility {
 	return mobility
 }
 
-func (b *IndexedBoard) getFlippingCells(idx Idx, local int, selfState, opponentState State) (int, int) {
+func getFlippingCells(idx Idx, local, n int, selfState, opponentState State) (int, int) {
 	var backwardFlip, forwardFlip int
 	// backward
-	if local >= 2 && getCellState(idx, local-1) == opponentState {
+	if local >= 2 && idx.GetLocalState(local-1) == opponentState {
 		backwardFlip++
 	loopFlipBackward:
 		for i := 2; i <= local; i++ {
-			s := getCellState(idx, local-i)
+			s := idx.GetLocalState(local - i)
 			switch s {
 			case opponentState:
 				if i == local { // there is no ending disc
@@ -238,15 +238,15 @@ func (b *IndexedBoard) getFlippingCells(idx Idx, local int, selfState, opponentS
 		}
 	}
 
-	if local < b.N-2 && getCellState(idx, local+1) == opponentState {
+	if local < n-2 && idx.GetLocalState(local+1) == opponentState {
 		forwardFlip++
 		// check flipping for white
 	loopFlipForward:
-		for i := 2; i+local < b.N; i++ {
-			s := getCellState(idx, local+i)
+		for i := 2; i+local < n; i++ {
+			s := idx.GetLocalState(local + i)
 			switch s {
 			case opponentState:
-				if i+local < b.N { // there is no ending disc
+				if i+local < n { // there is no ending disc
 					forwardFlip = 0
 					break loopFlipForward
 				}
@@ -278,8 +278,24 @@ func (b *IndexedBoard) IsLegal(cell int, t Turn) bool {
 	return flippingCellsNum > 0
 }
 
-// Place is not responsible for legality check
+func (b *IndexedBoard) HasLegalMove(t Turn) bool {
+	hasLegal := false
+	for i := 0; i < b.CellN; i++ {
+		hasLegal = hasLegal || b.IsLegal(i, t)
+	}
+	return hasLegal
+}
+
 func (b *IndexedBoard) Place(cell int, t Turn) {
+	if b.HasLegalMove(t) {
+		b.PlaceWithoutCheck(cell, t)
+
+		b.SwitchTurn()
+	}
+}
+
+// PlaceWithoutCheck only place the disk, without the legality or switching turn
+func (b *IndexedBoard) PlaceWithoutCheck(cell int, t Turn) {
 	lineForCells := b.LineForCells[cell]
 
 	for _, lineForCell := range lineForCells {
@@ -289,67 +305,63 @@ func (b *IndexedBoard) Place(cell int, t Turn) {
 
 		m := b.mobility[idx][t][local]
 
-		updatedIdx := b.updateIdx(idx, local, m[0], m[1], t)
+		// flip / place the disk
+		for i := -m[0]; i <= m[1]; i++ {
+			idx.PlaceOnLocal(local+i, t)
+		}
 
-		b.Lines[lineId] = updatedIdx
+		b.Lines[lineId] = idx
 	}
-}
-
-func (b *IndexedBoard) updateIdx(
-	idx Idx,
-	local, backwardFlip, forwardFlip int,
-	turn Turn) Idx {
-
-	idxInt := int(idx)
-
-	var ternary int
-
-	if turn == Black {
-		ternary = 1
-	} else {
-		ternary = 2
-	}
-
-	// add local
-	idxInt += pow(3, local) * ternary
-
-	// flip backward
-	for i := 0; i < backwardFlip; i++ {
-		idxInt += pow(3, local-i-1) * (2*ternary - 3)
-	}
-
-	// add forward
-	for i := 0; i < forwardFlip; i++ {
-		idxInt += pow(3, local+i+1) * (2*ternary - 3)
-	}
-
-	return Idx(idxInt)
 }
 
 func (b *IndexedBoard) SwitchTurn() {
-	if b.Turn == Black {
-		b.Turn = White
-	} else {
-		b.Turn = Black
+	b.Turn = Turn(!bool(b.Turn))
+}
+
+func (b *IndexedBoard) Count() (int, int) {
+	var totalB, totalW int
+
+	for i := 0; i < b.N; i++ {
+		idx := b.Lines[LineId(i)]
+		for local := 0; local < b.N; local++ {
+			state := idx.GetLocalState(local)
+
+			switch state {
+			case HasBlack:
+				totalB++
+			case HasWhite:
+				totalW++
+			}
+		}
 	}
+
+	return totalB, totalW
 }
 
 func (b *IndexedBoard) FromStringCells(cellsStr [][]string) {
-
 	// reset lines
 	for lineId := range b.Lines {
-		b.Lines[lineId] = Idx(0)
+		b.Lines[lineId] = Idx{0, b.N}
 	}
 
 	// place according to the string
 	for y, row := range cellsStr {
 		for x, char := range row {
 			cell := y*b.N + x
-			switch char {
-			case "b":
-				b.Place(cell, Black)
-			case "w":
-				b.Place(cell, White)
+
+			for _, lineForCell := range b.LineForCells[cell] {
+				lineId, local := lineForCell.LineId, lineForCell.Local
+
+				idx := b.Lines[lineId]
+
+				switch char {
+				case "b":
+					idx.PlaceOnLocal(local, Black)
+				case "w":
+					idx.PlaceOnLocal(local, White)
+				}
+
+				b.Lines[lineId] = idx
 			}
 		}
 	}
@@ -360,14 +372,9 @@ func (b *IndexedBoard) String() string {
 
 	fmt.Fprintln(&builder, "")
 	for i := 0; i < b.N; i++ {
-		for j := 0; j < b.N; j++ {
-			idx := b.Lines[LineId(i)]
+		idx := b.Lines[LineId(i)]
 
-			ternary := int(idx) / pow(3, j) % b.N
-
-			fmt.Fprintf(&builder, "|%d", ternary)
-		}
-		fmt.Fprintln(&builder, "|")
+		fmt.Fprintln(&builder, idx.String())
 	}
 
 	return builder.String()
@@ -377,8 +384,42 @@ func pow(x, y int) int {
 	return int(math.Pow(float64(x), float64(y)))
 }
 
-func getCellState(idx Idx, local int) State {
-	ternary := int(idx) / pow(3, local) % 3
+// state of one line i.e., if there is no disk, Idx = 0
+type Idx struct {
+	Value int
+	N     int
+}
+
+func (idx *Idx) GetLocalState(local int) State {
+	ternary := idx.Value / pow(3, local) % idx.N
 
 	return State(ternary)
+}
+
+func (idx *Idx) PlaceOnLocal(local int, turn Turn) {
+	current := idx.GetLocalState(local)
+	var diff int
+
+	if turn == Black {
+		diff = 1 - int(current)
+	} else {
+		diff = 2 - int(current)
+	}
+
+	newValue := idx.Value + diff*pow(3, local)
+
+	idx.Value = newValue
+}
+
+func (idx *Idx) String() string {
+	var builder strings.Builder
+
+	for i := 0; i < idx.N; i++ {
+		ternary := int(idx.Value) / pow(3, i) % idx.N
+
+		fmt.Fprintf(&builder, "|%d", ternary)
+	}
+	fmt.Fprint(&builder, "|")
+
+	return builder.String()
 }

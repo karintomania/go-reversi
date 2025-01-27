@@ -59,69 +59,65 @@ func TestIndexedBoardCalcLinesForCell(t *testing.T) {
 func TestIndexedBoardCalcMobility(t *testing.T) {
 	n := 3
 
-	b := NewIndexedBoard(n)
-	// t.Log(b.IdxN)
+	m := NewMobility(n)
 
-	m := b.calcMobility()
-
-	assert.Equal(t, []int{0, 0}, m[0][Black][0])
-	assert.Equal(t, []int{1, 0}, m[5][White][2])
-	assert.Equal(t, []int{1, 0}, m[7][Black][2])
-	assert.Equal(t, []int{0, 1}, m[15][Black][0])
-	assert.Equal(t, []int{0, 1}, m[21][White][0])
+	assert.Equal(t, []int{0, 0}, m[Idx{0, n}][Black][0])
+	assert.Equal(t, []int{1, 0}, m[Idx{5, n}][White][2])
+	assert.Equal(t, []int{1, 0}, m[Idx{7, n}][Black][2])
+	assert.Equal(t, []int{0, 1}, m[Idx{15, n}][Black][0])
+	assert.Equal(t, []int{0, 1}, m[Idx{21, n}][White][0])
 }
 
-func TestIndexedBoardPlace(t *testing.T) {
+func TestIndexedBoardPlaceWithoutCheck(t *testing.T) {
 	n := 3
 
-	b := IndexedBoard{N: n, Turn: Black}
-	b.init()
+	b := NewIndexedBoard(n)
 
 	t.Log(b.String())
 
-	// |1|1|0|
-	// |2|2|0|
+	// |1|2|0|
+	// |2|1|0|
 	// |0|0|0|
-	assert.Equal(t, Idx(7), b.Lines[LineId(0)])
-	assert.Equal(t, Idx(5), b.Lines[LineId(1)])
-	assert.Equal(t, Idx(0), b.Lines[LineId(2)])
-	assert.Equal(t, Idx(7), b.Lines[LineId(3)])
-	assert.Equal(t, Idx(5), b.Lines[LineId(4)])
-	assert.Equal(t, Idx(0), b.Lines[LineId(5)])
-	assert.Equal(t, Idx(4), b.Lines[LineId(6)])
-	assert.Equal(t, Idx(3), b.Lines[LineId(7)])
+	assert.Equal(t, Idx{7, n}, b.Lines[LineId(0)])
+	assert.Equal(t, Idx{5, n}, b.Lines[LineId(1)])
+	assert.Equal(t, Idx{0, n}, b.Lines[LineId(2)])
+	assert.Equal(t, Idx{7, n}, b.Lines[LineId(3)])
+	assert.Equal(t, Idx{5, n}, b.Lines[LineId(4)])
+	assert.Equal(t, Idx{0, n}, b.Lines[LineId(5)])
+	assert.Equal(t, Idx{4, n}, b.Lines[LineId(6)])
+	assert.Equal(t, Idx{3, n}, b.Lines[LineId(7)])
 
-	b.Place(2, Black)
+	b.PlaceWithoutCheck(2, Black)
 
 	t.Log(b.String())
 
 	// |1|1|1|
 	// |2|1|0|
 	// |0|0|0|
-	assert.Equal(t, Idx(13), b.Lines[LineId(0)])
-	assert.Equal(t, Idx(5), b.Lines[LineId(1)])
-	assert.Equal(t, Idx(0), b.Lines[LineId(2)])
-	assert.Equal(t, Idx(7), b.Lines[LineId(3)])
-	assert.Equal(t, Idx(5), b.Lines[LineId(4)])
-	assert.Equal(t, Idx(1), b.Lines[LineId(5)])
-	assert.Equal(t, Idx(4), b.Lines[LineId(6)])
-	assert.Equal(t, Idx(4), b.Lines[LineId(7)])
+	assert.Equal(t, Idx{13, n}, b.Lines[LineId(0)])
+	assert.Equal(t, Idx{5, n}, b.Lines[LineId(1)])
+	assert.Equal(t, Idx{0, n}, b.Lines[LineId(2)])
+	assert.Equal(t, Idx{7, n}, b.Lines[LineId(3)])
+	assert.Equal(t, Idx{5, n}, b.Lines[LineId(4)])
+	assert.Equal(t, Idx{1, n}, b.Lines[LineId(5)])
+	assert.Equal(t, Idx{4, n}, b.Lines[LineId(6)])
+	assert.Equal(t, Idx{4, n}, b.Lines[LineId(7)])
 
-	b.Place(5, White)
+	b.PlaceWithoutCheck(5, White)
 
 	t.Log(b.String())
 
 	// |1|1|1|
 	// |2|2|2|
 	// |0|0|0|
-	assert.Equal(t, Idx(13), b.Lines[LineId(0)])
-	assert.Equal(t, Idx(26), b.Lines[LineId(1)])
-	assert.Equal(t, Idx(0), b.Lines[LineId(2)])
-	assert.Equal(t, Idx(7), b.Lines[LineId(3)])
-	assert.Equal(t, Idx(5), b.Lines[LineId(4)])
-	assert.Equal(t, Idx(7), b.Lines[LineId(5)])
-	assert.Equal(t, Idx(4), b.Lines[LineId(6)])
-	assert.Equal(t, Idx(4), b.Lines[LineId(7)])
+	assert.Equal(t, Idx{13, n}, b.Lines[LineId(0)])
+	assert.Equal(t, Idx{26, n}, b.Lines[LineId(1)])
+	assert.Equal(t, Idx{0, n}, b.Lines[LineId(2)])
+	assert.Equal(t, Idx{7, n}, b.Lines[LineId(3)])
+	assert.Equal(t, Idx{5, n}, b.Lines[LineId(4)])
+	assert.Equal(t, Idx{7, n}, b.Lines[LineId(5)])
+	assert.Equal(t, Idx{4, n}, b.Lines[LineId(6)])
+	assert.Equal(t, Idx{4, n}, b.Lines[LineId(7)])
 
 }
 
@@ -134,10 +130,37 @@ func TestIndexedBoardFromStringCells(t *testing.T) {
 		[][]string{
 			{"n", "n", "n"},
 			{"b", "b", "b"},
-			{"w", "w", "w"},
+			{"b", "w", "b"},
 		},
 	)
 
 	t.Log(b.String())
 
+	assert.Equal(t, Idx{0, n}, b.Lines[LineId(0)])
+	assert.Equal(t, Idx{13, n}, b.Lines[LineId(1)])
+	assert.Equal(t, Idx{16, n}, b.Lines[LineId(2)])
+	assert.Equal(t, Idx{12, n}, b.Lines[LineId(3)])
+	assert.Equal(t, Idx{21, n}, b.Lines[LineId(4)])
+	assert.Equal(t, Idx{12, n}, b.Lines[LineId(5)])
+	assert.Equal(t, Idx{12, n}, b.Lines[LineId(6)])
+	assert.Equal(t, Idx{12, n}, b.Lines[LineId(7)])
+}
+
+func TestIndexedBoardCount(t *testing.T) {
+	n := 3
+
+	b := NewIndexedBoard(n)
+
+	b.FromStringCells(
+		[][]string{
+			{"n", "n", "n"},
+			{"b", "b", "b"},
+			{"b", "w", "b"},
+		},
+	)
+
+	totalB, totalW := b.Count()
+
+	assert.Equal(t, 5, totalB)
+	assert.Equal(t, 1, totalW)
 }
