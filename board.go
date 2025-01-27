@@ -4,19 +4,19 @@ import (
 	"fmt"
 )
 
-type Board struct {
+type ArrayBoard struct {
 	N     int
 	Cells [][]State
 	Turn  Turn
 }
 
-func NewBoard(n int) *Board {
-	b := &Board{}
+func NewArrayBoard(n int) *ArrayBoard {
+	b := &ArrayBoard{}
 	b.init(n)
 	return b
 }
 
-func (b *Board) init(n int) {
+func (b *ArrayBoard) init(n int) {
 	b.N = n
 
 	b.Turn = Black
@@ -49,7 +49,7 @@ func (b *Board) init(n int) {
 	b.Cells = cells
 }
 
-func (b *Board) SwitchTurn() {
+func (b *ArrayBoard) SwitchTurn() {
 	if b.Turn == Black {
 		b.Turn = White
 	} else {
@@ -57,13 +57,13 @@ func (b *Board) SwitchTurn() {
 	}
 }
 
-func (b *Board) Pass() {
+func (b *ArrayBoard) Pass() {
 	// switch turn
 	b.SwitchTurn()
 
 }
 
-func (b *Board) Place(p Position) error {
+func (b *ArrayBoard) Place(p Position) error {
 	// check if the cell is taken
 	isValid := b.isCellTaken(p)
 	if !isValid {
@@ -95,7 +95,7 @@ func (b *Board) Place(p Position) error {
 	return nil
 }
 
-func (b *Board) HasLegalCells() bool {
+func (b *ArrayBoard) HasLegalCells() bool {
 	for x := 0; x < b.N; x++ {
 		for y := 0; y < b.N; y++ {
 			if b.Cells[y][x] != HasNothing {
@@ -113,12 +113,12 @@ func (b *Board) HasLegalCells() bool {
 	return false
 }
 
-func (b *Board) isCellTaken(p Position) bool {
+func (b *ArrayBoard) isCellTaken(p Position) bool {
 	state := b.Cells[p.Y][p.X]
 	return state == HasNothing
 }
 
-func (b *Board) GetCellsToFlip(x, y int) []CellToFlip {
+func (b *ArrayBoard) GetCellsToFlip(x, y int) []CellToFlip {
 	cells := make([]CellToFlip, 0, b.N)
 
 	var selfState State
@@ -278,7 +278,7 @@ func (b *Board) GetCellsToFlip(x, y int) []CellToFlip {
 	return cells
 }
 
-func (b *Board) Count() (int, int) {
+func (b *ArrayBoard) Count() (int, int) {
 	var totalB, totalW int
 
 	for x := 0; x < b.N; x++ {
@@ -294,7 +294,7 @@ func (b *Board) Count() (int, int) {
 	return totalB, totalW
 }
 
-func (b *Board) FromStringCells(cellsStr [][]string) {
+func (b *ArrayBoard) FromStringCells(cellsStr [][]string) {
 	for y, row := range cellsStr {
 		for x, s := range row {
 			var state State
@@ -312,7 +312,7 @@ func (b *Board) FromStringCells(cellsStr [][]string) {
 	}
 }
 
-func (b *Board) String() string {
+func (b *ArrayBoard) String() string {
 	var result string
 
 	for _, row := range b.Cells {

@@ -191,7 +191,7 @@ func (g *Game) place(p Position) {
 
 	// deal with pass
 	passedCount := 0
-	for !b.HasLegalCells() && passedCount <= 2 {
+	for !b.HasLegalMove(b.Turn) && passedCount <= 2 {
 		g.pass()
 
 		passedCount++
@@ -226,7 +226,7 @@ func (g *Game) replay() {
 	// swap player colour
 	g.Player1.Colour, g.Player2.Colour = g.Player2.Colour, g.Player1.Colour
 
-	g.Board.init(g.Board.N)
+	g.Board.init()
 }
 
 func (g *Game) finish() {
@@ -261,7 +261,7 @@ func (g *Game) generateResultMessage() string {
 }
 
 func (g *Game) pass() {
-	g.Board.Pass()
+	g.Board.SwitchTurn()
 }
 
 func (g *Game) GetPlayer(id PlayerId) Player {

@@ -1,13 +1,16 @@
 package main
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIdxPlaceOnLocal(t *testing.T) {
-	idx := Idx{0, 3}
+	logger = NewLogger(slog.LevelDebug)
+
+	idx := Idx{0, 4}
 
 	// place Black at 0
 	idx.PlaceOnLocal(0, Black)

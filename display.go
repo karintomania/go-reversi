@@ -71,13 +71,13 @@ func (d *Display) Render(g *Game, p Position) {
 
 	b := g.Board
 	state := g.State
-
-	n := len(b.Cells)
+	n := b.N
 
 	for y := 0; y < n; y++ {
 		rowStr := RightWallString
 		for x := 0; x < n; x++ {
-			s := b.Cells[y][x]
+			idx := b.Lines[LineId(y)]
+			s := idx.GetLocalState(x)
 			if y == p.Y && x == p.X { // on focus
 				rowStr += getFocusedCellContent(s)
 			} else {

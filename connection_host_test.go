@@ -31,10 +31,9 @@ func TestConnectionHostSendCommand(t *testing.T) {
 	go hostConn.Run()
 
 	// emulate game
-	b := Board{}
-	b.init(3)
+	b := NewBoard(3)
 
-	g := NewGame(&b, Human, Human)
+	g := NewGame(b, Human, Human)
 	g.State = Player1Turn
 
 	gameCh <- g

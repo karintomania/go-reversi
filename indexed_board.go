@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 )
@@ -11,12 +12,22 @@ type Mobility map[Idx]map[Turn][][]int
 type Lines map[LineId]Idx
 type LineId int
 
+type LineType int
+
+const (
+	Row LineType = iota
+	Col
+	BackSlash // left top to rigth bottom (same as \)
+	Slash     // right top to left bottom (same as /)
+)
+
 type LineForCell struct {
-	LineId LineId
-	Local  int // local position of the cell in the idx
+	LineId   LineId
+	Local    int      // local position of the cell in the idx
+	LineType LineType // local position of the cell in the idx
 }
 
-type IndexedBoard struct {
+type Board struct {
 	N     int // dimension of the board
 	CellN int // number of cells (e.g., if N=8, CellN=64)
 	IdxN  int // number of possible pattern for one index (if N=8, it's 3^8)
@@ -34,13 +45,13 @@ type IndexedBoard struct {
 	Turn Turn
 }
 
-func NewIndexedBoard(n int) IndexedBoard {
-	b := IndexedBoard{N: n, Turn: Black}
+func NewBoard(n int) *Board {
+	b := &Board{N: n, Turn: Black}
 	b.init()
 	return b
 }
 
-func (b *IndexedBoard) init() {
+func (b *Board) init() {
 	b.CellN = b.N * b.N
 
 	b.LineN = b.calcLineN(b.N)
@@ -53,7 +64,7 @@ func (b *IndexedBoard) init() {
 	b.initLines()
 }
 
-func (b *IndexedBoard) initLines() {
+func (b *Board) initLines() {
 	b.Lines = make(map[LineId]Idx, b.LineN)
 
 	for i := 0; i < b.LineN; i++ {
@@ -67,20 +78,20 @@ func (b *IndexedBoard) initLines() {
 	initW1 := b.N*(middle1) + middle2
 	initW2 := b.N*(middle2) + middle1
 
-	b.PlaceWithoutCheck(initB1, Black)
-	b.PlaceWithoutCheck(initB2, Black)
-	b.PlaceWithoutCheck(initW1, White)
-	b.PlaceWithoutCheck(initW2, White)
+	b.updateCellState(initB1, Black)
+	b.updateCellState(initB2, Black)
+	b.updateCellState(initW1, White)
+	b.updateCellState(initW2, White)
 }
 
-func (b *IndexedBoard) calcLineN(n int) int {
+func (b *Board) calcLineN(n int) int {
 	// 2*b.N = N rows + N cols
-	// There are 2*(2*b.N-1) diagnol line from left top to right bottom and the other way
+	// There are 2*(2*b.N-1) diagnol lines for 2 directions (backslash \ and slash / directions)
 	// 8 of them only have 1 or 2 cells, so it can't have any legal cell
 	return 2*n + 2*(2*n-1) - 8
 }
 
-func (b *IndexedBoard) calcLineForCells(n int) [][]LineForCell {
+func (b *Board) calcLineForCells(n int) [][]LineForCell {
 	cellN := n * n
 
 	lineForCells := make([][]LineForCell, cellN)
@@ -91,17 +102,17 @@ func (b *IndexedBoard) calcLineForCells(n int) [][]LineForCell {
 		colLine := cell%n + n
 
 		// colIdx is local position in row idx and vice versa
-		rowLineForCell := LineForCell{LineId(rowLine), colLine - n}
-		colLineForCell := LineForCell{LineId(colLine), rowLine}
+		rowLineForCell := LineForCell{LineId(rowLine), colLine - n, Row}
+		colLineForCell := LineForCell{LineId(colLine), rowLine, Col}
 		lineForCells[cell] = []LineForCell{rowLineForCell, colLineForCell}
 	}
 
-	// add right top diagnal lines
+	// add backslash \ diagnal lines
 	for i := 0; i < n*2-5; i++ {
 		local := 0
 		middle := (n*2 - 5) / 2
 
-		// right top lines starts from n*2
+		// left top lines starts from n*2
 		line := n*2 + i
 
 		var startCell int
@@ -114,7 +125,7 @@ func (b *IndexedBoard) calcLineForCells(n int) [][]LineForCell {
 		}
 
 		for cell := startCell; cell < cellN; cell += n + 1 {
-			lineForCells[cell] = append(lineForCells[cell], LineForCell{LineId(line), local})
+			lineForCells[cell] = append(lineForCells[cell], LineForCell{LineId(line), local, BackSlash})
 			local++
 			// finish if cell reaches the right end column
 			if cell != startCell && cell%n == n-1 {
@@ -123,12 +134,12 @@ func (b *IndexedBoard) calcLineForCells(n int) [][]LineForCell {
 		}
 	}
 
-	// add left top diagnal lines
+	// add slash / diagnal lines
 	for i := 0; i < n*2-5; i++ {
 		local := 0
 		middle := (n*2 - 5) / 2
 
-		// left top line starts from n*2 + n*2 - 5
+		// right top line starts from n*2 + n*2 - 5
 		line := n*2 + n*2 - 5 + i
 
 		var startCell int
@@ -141,7 +152,7 @@ func (b *IndexedBoard) calcLineForCells(n int) [][]LineForCell {
 		}
 
 		for cell := startCell; cell < cellN; cell += n - 1 {
-			lineForCells[cell] = append(lineForCells[cell], LineForCell{LineId(line), local})
+			lineForCells[cell] = append(lineForCells[cell], LineForCell{LineId(line), local, Slash})
 			local++
 			// finish if cell reaches left end colum
 			if cell != startCell && cell%n == 0 {
@@ -246,7 +257,7 @@ func getFlippingCells(idx Idx, local, n int, selfState, opponentState State) (in
 			s := idx.GetLocalState(local + i)
 			switch s {
 			case opponentState:
-				if i+local < n { // there is no ending disc
+				if i+local == n-1 { // there is no ending disc
 					forwardFlip = 0
 					break loopFlipForward
 				}
@@ -264,7 +275,7 @@ func getFlippingCells(idx Idx, local, n int, selfState, opponentState State) (in
 	return backwardFlip, forwardFlip
 }
 
-func (b *IndexedBoard) IsLegal(cell int, t Turn) bool {
+func (b *Board) IsLegal(cell int, t Turn) bool {
 	idxForCells := b.LineForCells[cell]
 
 	flippingCellsNum := 0
@@ -278,7 +289,7 @@ func (b *IndexedBoard) IsLegal(cell int, t Turn) bool {
 	return flippingCellsNum > 0
 }
 
-func (b *IndexedBoard) HasLegalMove(t Turn) bool {
+func (b *Board) HasLegalMove(t Turn) bool {
 	hasLegal := false
 	for i := 0; i < b.CellN; i++ {
 		hasLegal = hasLegal || b.IsLegal(i, t)
@@ -286,39 +297,83 @@ func (b *IndexedBoard) HasLegalMove(t Turn) bool {
 	return hasLegal
 }
 
-func (b *IndexedBoard) Place(cell int, t Turn) {
-	if b.HasLegalMove(t) {
-		b.PlaceWithoutCheck(cell, t)
+func (b *Board) GetCellState(p Position) State {
+	idx := b.Lines[LineId(p.Y)]
 
-		b.SwitchTurn()
+	return idx.GetLocalState(p.X)
+}
+
+func (b *Board) Place(p Position) error {
+	cell := p.X + p.Y*b.N
+
+	t := b.Turn
+
+	if !b.IsLegal(cell, t) {
+		return fmt.Errorf("You can't place there.")
 	}
+
+	b.PlaceWithoutCheck(cell, t)
+
+	b.SwitchTurn()
+	return nil
 }
 
 // PlaceWithoutCheck only place the disk, without the legality or switching turn
-func (b *IndexedBoard) PlaceWithoutCheck(cell int, t Turn) {
+func (b *Board) PlaceWithoutCheck(cell int, t Turn) {
 	lineForCells := b.LineForCells[cell]
 
-	for _, lineForCell := range lineForCells {
-		lineId, local := lineForCell.LineId, lineForCell.Local
+	idxs := make([]Idx, 0, 4)
 
-		idx := b.Lines[lineId]
+	// save the value of idx before it's updated
+	for _, lineForCell := range b.LineForCells[cell] {
+		idxs = append(idxs, b.Lines[lineForCell.LineId])
+	}
+
+	for l, lineForCell := range lineForCells {
+		local, lineType := lineForCell.Local, lineForCell.LineType
+
+		var gap int
+
+		switch lineType {
+		case Row:
+			gap = 1
+		case Col:
+			gap = b.N
+		case BackSlash:
+			gap = b.N + 1
+		case Slash:
+			gap = b.N - 1
+		}
+
+		idx := idxs[l]
 
 		m := b.mobility[idx][t][local]
 
 		// flip / place the disk
 		for i := -m[0]; i <= m[1]; i++ {
-			idx.PlaceOnLocal(local+i, t)
+			cellToFlip := cell + gap*i
+			b.updateCellState(cellToFlip, t)
 		}
+	}
+}
 
+func (b *Board) updateCellState(cell int, t Turn) {
+	lineForCells := b.LineForCells[cell]
+
+	for _, lineForCell := range lineForCells {
+		lineId, local := lineForCell.LineId, lineForCell.Local
+		logger.Debug("", slog.Any("lineId", lineId), slog.Int("local", local))
+		idx := b.Lines[lineId]
+		idx.PlaceOnLocal(local, t)
 		b.Lines[lineId] = idx
 	}
 }
 
-func (b *IndexedBoard) SwitchTurn() {
+func (b *Board) SwitchTurn() {
 	b.Turn = Turn(!bool(b.Turn))
 }
 
-func (b *IndexedBoard) Count() (int, int) {
+func (b *Board) Count() (int, int) {
 	var totalB, totalW int
 
 	for i := 0; i < b.N; i++ {
@@ -338,7 +393,7 @@ func (b *IndexedBoard) Count() (int, int) {
 	return totalB, totalW
 }
 
-func (b *IndexedBoard) FromStringCells(cellsStr [][]string) {
+func (b *Board) FromStringCells(cellsStr [][]string) {
 	// reset lines
 	for lineId := range b.Lines {
 		b.Lines[lineId] = Idx{0, b.N}
@@ -367,7 +422,7 @@ func (b *IndexedBoard) FromStringCells(cellsStr [][]string) {
 	}
 }
 
-func (b *IndexedBoard) String() string {
+func (b *Board) String() string {
 	var builder strings.Builder
 
 	fmt.Fprintln(&builder, "")
@@ -391,7 +446,7 @@ type Idx struct {
 }
 
 func (idx *Idx) GetLocalState(local int) State {
-	ternary := idx.Value / pow(3, local) % idx.N
+	ternary := idx.Value / pow(3, local) % 3
 
 	return State(ternary)
 }
@@ -408,18 +463,37 @@ func (idx *Idx) PlaceOnLocal(local int, turn Turn) {
 
 	newValue := idx.Value + diff*pow(3, local)
 
+	logger.Debug("before", slog.Any("idx", idx), slog.Any("diff", diff), slog.Int("newValue", newValue))
 	idx.Value = newValue
+	logger.Debug("after", slog.Any("idx", idx))
 }
 
 func (idx *Idx) String() string {
 	var builder strings.Builder
 
 	for i := 0; i < idx.N; i++ {
-		ternary := int(idx.Value) / pow(3, i) % idx.N
+		state := idx.GetLocalState(i)
 
-		fmt.Fprintf(&builder, "|%d", ternary)
+		fmt.Fprintf(&builder, "|%d", int(state))
 	}
 	fmt.Fprint(&builder, "|")
+
+	return builder.String()
+}
+
+// type Mobility map[Idx]map[Turn][][]int
+func (m *Mobility) String() string {
+	var builder strings.Builder
+
+	n := int(math.Cbrt(float64(len(*m))))
+
+	for i := 0; i < len(*m); i++ {
+		idx := Idx{i, n}
+		mRow := (*m)[idx]
+
+		fmt.Fprintf(&builder, "%3d, %v %v", i, idx.String(), mRow)
+		fmt.Fprintln(&builder, "")
+	}
 
 	return builder.String()
 }

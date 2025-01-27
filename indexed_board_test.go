@@ -1,19 +1,22 @@
 package main
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestIndexedBoard(t *testing.T) {
-	b := NewIndexedBoard(3)
+	logger = NewLogger(slog.LevelInfo)
+	b := NewBoard(3)
 
 	assert.Equal(t, 3, b.N)
 }
 
 func TestIndexedBoardCalcIdxN(t *testing.T) {
-	b := NewIndexedBoard(3)
+	logger = NewLogger(slog.LevelInfo)
+	b := NewBoard(3)
 
 	idxN := b.calcLineN(8)
 
@@ -25,8 +28,9 @@ func TestIndexedBoardCalcIdxN(t *testing.T) {
 }
 
 func TestIndexedBoardCalcLinesForCell(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
 	n := 4
-	b := NewIndexedBoard(n)
+	b := NewBoard(n)
 
 	idxForCells := b.calcLineForCells(n)
 
@@ -36,30 +40,33 @@ func TestIndexedBoardCalcLinesForCell(t *testing.T) {
 
 	idxForCell5 := idxForCells[5]
 
-	assert.Equal(t, LineForCell{1, 1}, idxForCell5[0])
-	assert.Equal(t, LineForCell{5, 1}, idxForCell5[1])
-	assert.Equal(t, LineForCell{9, 1}, idxForCell5[2])
-	assert.Equal(t, LineForCell{11, 1}, idxForCell5[3])
+	assert.Equal(t, LineForCell{1, 1, Row}, idxForCell5[0])
+	assert.Equal(t, LineForCell{5, 1, Col}, idxForCell5[1])
+	assert.Equal(t, LineForCell{9, 1, BackSlash}, idxForCell5[2])
+	assert.Equal(t, LineForCell{11, 1, Slash}, idxForCell5[3])
 
 	idxForCell9 := idxForCells[9]
 
-	assert.Equal(t, LineForCell{2, 1}, idxForCell9[0])
-	assert.Equal(t, LineForCell{5, 2}, idxForCell9[1])
-	assert.Equal(t, LineForCell{8, 1}, idxForCell9[2])
-	assert.Equal(t, LineForCell{12, 2}, idxForCell9[3])
+	assert.Equal(t, LineForCell{2, 1, Row}, idxForCell9[0])
+	assert.Equal(t, LineForCell{5, 2, Col}, idxForCell9[1])
+	assert.Equal(t, LineForCell{8, 1, BackSlash}, idxForCell9[2])
+	assert.Equal(t, LineForCell{12, 2, Slash}, idxForCell9[3])
 
 	idxForCell10 := idxForCells[10]
 
-	assert.Equal(t, LineForCell{2, 2}, idxForCell10[0])
-	assert.Equal(t, LineForCell{6, 2}, idxForCell10[1])
-	assert.Equal(t, LineForCell{9, 2}, idxForCell10[2])
-	assert.Equal(t, LineForCell{13, 1}, idxForCell10[3])
+	assert.Equal(t, LineForCell{2, 2, Row}, idxForCell10[0])
+	assert.Equal(t, LineForCell{6, 2, Col}, idxForCell10[1])
+	assert.Equal(t, LineForCell{9, 2, BackSlash}, idxForCell10[2])
+	assert.Equal(t, LineForCell{13, 1, Slash}, idxForCell10[3])
 }
 
 func TestIndexedBoardCalcMobility(t *testing.T) {
-	n := 3
+	logger = NewLogger(slog.LevelInfo)
+	n := 4
 
 	m := NewMobility(n)
+
+	t.Log(m.String())
 
 	assert.Equal(t, []int{0, 0}, m[Idx{0, n}][Black][0])
 	assert.Equal(t, []int{1, 0}, m[Idx{5, n}][White][2])
@@ -69,9 +76,11 @@ func TestIndexedBoardCalcMobility(t *testing.T) {
 }
 
 func TestIndexedBoardPlaceWithoutCheck(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
+
 	n := 3
 
-	b := NewIndexedBoard(n)
+	b := NewBoard(n)
 
 	t.Log(b.String())
 
@@ -98,7 +107,7 @@ func TestIndexedBoardPlaceWithoutCheck(t *testing.T) {
 	assert.Equal(t, Idx{5, n}, b.Lines[LineId(1)])
 	assert.Equal(t, Idx{0, n}, b.Lines[LineId(2)])
 	assert.Equal(t, Idx{7, n}, b.Lines[LineId(3)])
-	assert.Equal(t, Idx{5, n}, b.Lines[LineId(4)])
+	assert.Equal(t, Idx{4, n}, b.Lines[LineId(4)])
 	assert.Equal(t, Idx{1, n}, b.Lines[LineId(5)])
 	assert.Equal(t, Idx{4, n}, b.Lines[LineId(6)])
 	assert.Equal(t, Idx{4, n}, b.Lines[LineId(7)])
@@ -114,17 +123,34 @@ func TestIndexedBoardPlaceWithoutCheck(t *testing.T) {
 	assert.Equal(t, Idx{26, n}, b.Lines[LineId(1)])
 	assert.Equal(t, Idx{0, n}, b.Lines[LineId(2)])
 	assert.Equal(t, Idx{7, n}, b.Lines[LineId(3)])
-	assert.Equal(t, Idx{5, n}, b.Lines[LineId(4)])
+	assert.Equal(t, Idx{7, n}, b.Lines[LineId(4)])
+	assert.Equal(t, Idx{7, n}, b.Lines[LineId(5)])
+	assert.Equal(t, Idx{7, n}, b.Lines[LineId(6)])
+	assert.Equal(t, Idx{7, n}, b.Lines[LineId(7)])
+
+	b.PlaceWithoutCheck(6, Black)
+
+	t.Log(b.String())
+
+	// |1|1|1|
+	// |1|1|2|
+	// |1|0|0|
+	assert.Equal(t, Idx{13, n}, b.Lines[LineId(0)])
+	assert.Equal(t, Idx{22, n}, b.Lines[LineId(1)])
+	assert.Equal(t, Idx{1, n}, b.Lines[LineId(2)])
+	assert.Equal(t, Idx{13, n}, b.Lines[LineId(3)])
+	assert.Equal(t, Idx{4, n}, b.Lines[LineId(4)])
 	assert.Equal(t, Idx{7, n}, b.Lines[LineId(5)])
 	assert.Equal(t, Idx{4, n}, b.Lines[LineId(6)])
-	assert.Equal(t, Idx{4, n}, b.Lines[LineId(7)])
+	assert.Equal(t, Idx{13, n}, b.Lines[LineId(7)])
 
 }
 
 func TestIndexedBoardFromStringCells(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
 	n := 3
 
-	b := NewIndexedBoard(n)
+	b := NewBoard(n)
 
 	b.FromStringCells(
 		[][]string{
@@ -147,9 +173,10 @@ func TestIndexedBoardFromStringCells(t *testing.T) {
 }
 
 func TestIndexedBoardCount(t *testing.T) {
+	logger = NewLogger(slog.LevelInfo)
 	n := 3
 
-	b := NewIndexedBoard(n)
+	b := NewBoard(n)
 
 	b.FromStringCells(
 		[][]string{
