@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"math"
 	"strings"
 )
 
-// mobility[index][0:black/1:white][cell position in row] = [backward flip cells num, forward flip cells num]
+// mobility[index][0:black/1:white][cell position in row]
+// = [backward flip cells num, forward flip cells num]
 type Mobility map[Idx]map[Turn][][]int
 type Lines map[LineId]Idx
 type LineId int
@@ -362,7 +362,6 @@ func (b *Board) updateCellState(cell int, t Turn) {
 
 	for _, lineForCell := range lineForCells {
 		lineId, local := lineForCell.LineId, lineForCell.Local
-		logger.Debug("", slog.Any("lineId", lineId), slog.Int("local", local))
 		idx := b.Lines[lineId]
 		idx.PlaceOnLocal(local, t)
 		b.Lines[lineId] = idx
@@ -463,9 +462,7 @@ func (idx *Idx) PlaceOnLocal(local int, turn Turn) {
 
 	newValue := idx.Value + diff*pow(3, local)
 
-	logger.Debug("before", slog.Any("idx", idx), slog.Any("diff", diff), slog.Int("newValue", newValue))
 	idx.Value = newValue
-	logger.Debug("after", slog.Any("idx", idx))
 }
 
 func (idx *Idx) String() string {

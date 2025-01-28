@@ -34,6 +34,8 @@ func TestLocalClientMovesPosition(t *testing.T) {
 
 	gameCh <- g
 
+	time.Sleep(5 * time.Millisecond)
+
 	// move right
 	inputCh <- "d"
 	time.Sleep(5 * time.Millisecond)
@@ -67,9 +69,11 @@ func TestLocalClientPlaceDisk(t *testing.T) {
 
 	gameCh <- g
 
+	time.Sleep(10 * time.Millisecond)
+
 	// place disk
 	inputCh <- " "
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 	cmd := <-cmdCh
 
 	assert.Equal(t, CommandPlace, cmd.CommandType)

@@ -71,17 +71,17 @@ func TestGamePass(t *testing.T) {
 
 	// Player1 is skipped
 	assert.Equal(t, Player2Turn, g.State)
-	assert.Equal(t, HasWhite, g.Board.GetCellState(Position{0, 2}))
+	assert.Equal(t, HasWhite, g.Board.GetCellState(Position{2, 0}))
 
 	cmd = GameCommand{CommandType: CommandPlace, Position: Position{1, 0}}
 	player2CmdCh <- cmd
 
-	mockSync(player1GameCh, player2GameCh)
+	time.Sleep(30 * time.Millisecond)
 
 	// game is finished as both player can't place
-	assert.Equal(t, Finished, g.State)
+	assert.Equal(t, Finished.String(), g.State.String())
 	assert.Equal(t, fmt.Sprintf(messageWin, 3, 6, "Player 2"), g.Message)
-	assert.Equal(t, HasWhite, g.Board.GetCellState(Position{0, 1}))
+	assert.Equal(t, HasWhite, g.Board.GetCellState(Position{1, 0}))
 }
 
 func TestReplay(t *testing.T) {
