@@ -226,7 +226,7 @@ func (g *Game) replay() {
 	// swap player colour
 	g.Player1.Colour, g.Player2.Colour = g.Player2.Colour, g.Player1.Colour
 
-	g.Board.init()
+	g.Board.Replay()
 }
 
 func (g *Game) finish() {

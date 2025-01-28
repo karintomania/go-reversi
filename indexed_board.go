@@ -52,6 +52,8 @@ func NewBoard(n int) *Board {
 }
 
 func (b *Board) init() {
+	b.Turn = Black
+
 	b.CellN = b.N * b.N
 
 	b.LineN = b.calcLineN(b.N)
@@ -60,6 +62,14 @@ func (b *Board) init() {
 
 	b.LineForCells = b.calcLineForCells(b.N)
 	b.mobility = NewMobility(b.N)
+
+	b.initLines()
+}
+
+func (b *Board) Replay() {
+	b.Turn = Black
+
+	b.IdxN = pow(3, b.N)
 
 	b.initLines()
 }
