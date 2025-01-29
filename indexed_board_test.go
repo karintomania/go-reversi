@@ -30,13 +30,8 @@ func TestIndexedBoardCalcIdxN(t *testing.T) {
 func TestIndexedBoardCalcLinesForCell(t *testing.T) {
 	logger = NewLogger(slog.LevelInfo)
 	n := 4
-	b := NewBoard(n)
 
-	idxForCells := b.calcLineForCells(n)
-
-	// for i, idxForCell := range idxForCells {
-	// 	t.Logf("%d, %v", i, idxForCell)
-	// }
+	idxForCells := NewLineForCells(n)
 
 	idxForCell5 := idxForCells[5]
 
@@ -66,8 +61,6 @@ func TestIndexedBoardCalcMobility(t *testing.T) {
 
 	m := NewMobility(n)
 
-	t.Log(m.String())
-
 	assert.Equal(t, []int{0, 0}, m[Idx{0, n}][Black][0])
 	assert.Equal(t, []int{1, 0}, m[Idx{5, n}][White][2])
 	assert.Equal(t, []int{1, 0}, m[Idx{7, n}][Black][2])
@@ -81,8 +74,6 @@ func TestIndexedBoardPlaceWithoutCheck(t *testing.T) {
 	n := 3
 
 	b := NewBoard(n)
-
-	t.Log(b.String())
 
 	// |1|2|0|
 	// |2|1|0|
@@ -98,8 +89,6 @@ func TestIndexedBoardPlaceWithoutCheck(t *testing.T) {
 
 	b.PlaceWithoutCheck(2, Black)
 
-	t.Log(b.String())
-
 	// |1|1|1|
 	// |2|1|0|
 	// |0|0|0|
@@ -114,8 +103,6 @@ func TestIndexedBoardPlaceWithoutCheck(t *testing.T) {
 
 	b.PlaceWithoutCheck(5, White)
 
-	t.Log(b.String())
-
 	// |1|1|1|
 	// |2|2|2|
 	// |0|0|0|
@@ -129,8 +116,6 @@ func TestIndexedBoardPlaceWithoutCheck(t *testing.T) {
 	assert.Equal(t, Idx{7, n}, b.Lines[LineId(7)])
 
 	b.PlaceWithoutCheck(6, Black)
-
-	t.Log(b.String())
 
 	// |1|1|1|
 	// |1|1|2|
@@ -159,8 +144,6 @@ func TestIndexedBoardFromStringCells(t *testing.T) {
 			{"b", "w", "b"},
 		},
 	)
-
-	t.Log(b.String())
 
 	assert.Equal(t, Idx{0, n}, b.Lines[LineId(0)])
 	assert.Equal(t, Idx{13, n}, b.Lines[LineId(1)])

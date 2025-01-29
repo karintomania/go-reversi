@@ -104,12 +104,13 @@ func startLocalSingleGame(n int) {
 		&d,
 	)
 
-	cli2 := AiClient{
-		gameCh:   player2GameCh,
-		cmdCh:    player2CmdCh,
-		quitCh:   player2QuitCh,
-		PlayerId: Player2Id,
-	}
+	cli2 := NewAiClient(
+		n,
+		player2GameCh,
+		player2CmdCh,
+		player2QuitCh,
+		Player2Id,
+	)
 
 	go func() {
 		cli1.Run()

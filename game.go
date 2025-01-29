@@ -181,13 +181,17 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 }
 
 func (g *Game) place(p Position) {
-	b := g.Board
+	oldB := g.Board
+	b, err := g.Board.Place(p)
 
-	err := b.Place(p)
 	if err != nil {
 		g.Message = fmt.Sprintf("%s", err)
 		return
 	}
+	g.Board = b
+
+	logger.Debug("old", slog.String("b", oldB.String()))
+	logger.Debug("cur", slog.String("b", b.String()))
 
 	// deal with pass
 	passedCount := 0

@@ -4,7 +4,16 @@ import (
 	"math/rand"
 )
 
-func getAiPosition(b *Board) Position {
+type AiPlayer struct {
+	N          int
+	ScoreTable []map[Idx]int // store the pre-calculated score for each row
+}
+
+func NewAiPlayer(n int) *AiPlayer {
+	return &AiPlayer{N: n}
+}
+
+func (ap *AiPlayer) getPosition(b *Board) Position {
 	return getRandom(b)
 }
 
@@ -25,4 +34,8 @@ func getRandom(b *Board) Position {
 	cell := availableCells[key]
 
 	return Position{cell % b.N, cell / b.N}
+}
+
+func evaluate(b *Board) int {
+	return 0
 }

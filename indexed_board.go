@@ -9,6 +9,7 @@ import (
 // mobility[index][0:black/1:white][cell position in row]
 // = [backward flip cells num, forward flip cells num]
 type Mobility map[Idx]map[Turn][][]int
+
 type Lines map[LineId]Idx
 type LineId int
 
@@ -20,6 +21,8 @@ const (
 	BackSlash // left top to rigth bottom (same as \)
 	Slash     // right top to left bottom (same as /)
 )
+
+type LineForCells [][]LineForCell
 
 type LineForCell struct {
 	LineId   LineId
@@ -38,7 +41,7 @@ type Board struct {
 	Lines Lines // indexes for each rows/columns/diagnal lines
 
 	// store line ids (row/col/diagnal) where a specific cell is in
-	LineForCells [][]LineForCell
+	LineForCells LineForCells
 
 	mobility Mobility
 
@@ -51,6 +54,28 @@ func NewBoard(n int) *Board {
 	return b
 }
 
+func (b *Board) CopyBoard() *Board {
+	copied := &Board{
+		N:            b.N,
+		CellN:        b.CellN,
+		IdxN:         b.IdxN,
+		LineN:        b.LineN,
+		LineForCells: b.LineForCells,
+		mobility:     b.mobility,
+		Turn:         b.Turn,
+	}
+
+	lines := make(Lines)
+
+	for k, v := range b.Lines {
+		lines[k] = v
+	}
+
+	copied.Lines = lines
+
+	return copied
+}
+
 func (b *Board) init() {
 	b.Turn = Black
 
@@ -60,7 +85,8 @@ func (b *Board) init() {
 
 	b.IdxN = pow(3, b.N)
 
-	b.LineForCells = b.calcLineForCells(b.N)
+	b.LineForCells = NewLineForCells(b.N)
+
 	b.mobility = NewMobility(b.N)
 
 	b.initLines()
@@ -101,7 +127,7 @@ func (b *Board) calcLineN(n int) int {
 	return 2*n + 2*(2*n-1) - 8
 }
 
-func (b *Board) calcLineForCells(n int) [][]LineForCell {
+func NewLineForCells(n int) LineForCells {
 	cellN := n * n
 
 	lineForCells := make([][]LineForCell, cellN)
@@ -313,19 +339,22 @@ func (b *Board) GetCellState(p Position) State {
 	return idx.GetLocalState(p.X)
 }
 
-func (b *Board) Place(p Position) error {
+func (b *Board) Place(p Position) (*Board, error) {
 	cell := p.X + p.Y*b.N
 
 	t := b.Turn
 
 	if !b.IsLegal(cell, t) {
-		return fmt.Errorf("You can't place there.")
+		return b, fmt.Errorf("You can't place there.")
 	}
 
-	b.PlaceWithoutCheck(cell, t)
+	copied := b.CopyBoard()
 
-	b.SwitchTurn()
-	return nil
+	copied.PlaceWithoutCheck(cell, t)
+
+	copied.SwitchTurn()
+
+	return copied, nil
 }
 
 // PlaceWithoutCheck only place the disk, without the legality or switching turn
