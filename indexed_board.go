@@ -431,6 +431,22 @@ func (b *Board) Count() (int, int) {
 	return totalB, totalW
 }
 
+func (b *Board) CountEmptyCells() int {
+	var total int
+
+	for i := 0; i < b.N; i++ {
+		idx := b.Lines[LineId(i)]
+		for local := 0; local < b.N; local++ {
+			state := idx.GetLocalState(local)
+			if state == HasNothing {
+				total++
+			}
+		}
+	}
+
+	return total
+}
+
 func (b *Board) FromStringCells(cellsStr [][]string) {
 	// reset lines
 	for lineId := range b.Lines {

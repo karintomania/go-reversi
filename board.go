@@ -349,6 +349,10 @@ type Position struct {
 	Y int
 }
 
+func cellToPosition(n int, cell int) Position {
+	return Position{cell % n, cell / n}
+}
+
 func (p *Position) addX(n int, maxN int) {
 	p.X = min(max(p.X+n, 0), maxN-1)
 }
