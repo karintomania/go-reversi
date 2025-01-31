@@ -74,14 +74,12 @@ func main() {
 }
 
 func startLocalSingleGame(n int) {
-	var b Board
-
-	b.init(n)
+	b := NewBoard(n)
 
 	d := NewDisplay()
 	defer d.Close()
 
-	g := NewGame(&b, Human, AI)
+	g := NewGame(b, Human, AI)
 
 	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
 
@@ -106,12 +104,13 @@ func startLocalSingleGame(n int) {
 		&d,
 	)
 
-	cli2 := AiClient{
-		gameCh:   player2GameCh,
-		cmdCh:    player2CmdCh,
-		quitCh:   player2QuitCh,
-		PlayerId: Player2Id,
-	}
+	cli2 := NewAiClient(
+		n,
+		player2GameCh,
+		player2CmdCh,
+		player2QuitCh,
+		Player2Id,
+	)
 
 	go func() {
 		cli1.Run()
@@ -125,9 +124,7 @@ func startLocalSingleGame(n int) {
 }
 
 func startLocalMultiGame(n int) {
-	var b Board
-
-	b.init(n)
+	b := NewBoard(n)
 
 	d := NewDisplay()
 	defer d.Close()
@@ -140,7 +137,7 @@ func startLocalMultiGame(n int) {
 		}
 	}()
 
-	g := NewGame(&b, Human, Human)
+	g := NewGame(b, Human, Human)
 
 	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
 

@@ -38,22 +38,6 @@ func TestGameStart(t *testing.T) {
 }
 
 func TestGamePass(t *testing.T) {
-	// var b Board
-
-	// b.init(3)
-
-	// b.FromStringCells(
-	// 	[][]string{
-	// 		{"n", "n", "n"},
-	// 		{"w", "b", "b"},
-	// 		{"b", "w", "w"},
-	// 	},
-	// )
-
-	// g := NewGame(&b, Human, Human)
-
-	// player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := g.Start()
-
 	g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, _, _ := gameTestInit(
 		[][]string{
 			{"n", "n", "n"},
@@ -78,7 +62,7 @@ func TestGamePass(t *testing.T) {
 
 	mockSync(player1GameCh, player2GameCh)
 	assert.Equal(t, Player2Turn, g.State)
-	assert.Equal(t, HasBlack, g.Board.Cells[0][0])
+	assert.Equal(t, HasBlack, g.Board.GetCellState(Position{0, 0}))
 
 	cmd = GameCommand{CommandType: CommandPlace, Position: Position{2, 0}}
 	player2CmdCh <- cmd
@@ -87,17 +71,17 @@ func TestGamePass(t *testing.T) {
 
 	// Player1 is skipped
 	assert.Equal(t, Player2Turn, g.State)
-	assert.Equal(t, HasWhite, g.Board.Cells[0][2])
+	assert.Equal(t, HasWhite, g.Board.GetCellState(Position{2, 0}))
 
 	cmd = GameCommand{CommandType: CommandPlace, Position: Position{1, 0}}
 	player2CmdCh <- cmd
 
-	mockSync(player1GameCh, player2GameCh)
+	time.Sleep(30 * time.Millisecond)
 
 	// game is finished as both player can't place
-	assert.Equal(t, Finished, g.State)
+	assert.Equal(t, Finished.String(), g.State.String())
 	assert.Equal(t, fmt.Sprintf(messageWin, 3, 6, "Player 2"), g.Message)
-	assert.Equal(t, HasWhite, g.Board.Cells[0][1])
+	assert.Equal(t, HasWhite, g.Board.GetCellState(Position{1, 0}))
 }
 
 func TestReplay(t *testing.T) {
@@ -190,15 +174,13 @@ func TestGameQuit(t *testing.T) {
 func gameTestInit(initBoard [][]string) (*Game, chan GameCommand, chan GameCommand, chan Game, chan Game, chan bool, chan bool) {
 	logger = NewLogger(slog.LevelInfo)
 
-	var b Board
-
-	b.init(3)
+	b := NewBoard(3)
 
 	if len(initBoard) > 0 {
 		b.FromStringCells(initBoard)
 	}
 
-	g := NewGame(&b, Human, Human)
+	g := NewGame(b, Human, Human)
 
 	player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh := g.Start()
 	return &g, player1CmdCh, player2CmdCh, player1GameCh, player2GameCh, player1QuitCh, player2QuitCh

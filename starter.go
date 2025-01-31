@@ -13,11 +13,9 @@ type HostStarter struct {
 }
 
 func (hs *HostStarter) Start(n int, port int) {
-	var b Board
+	b := NewBoard(n)
 
-	b.init(n)
-
-	hs.g = NewGame(&b, Human, Human)
+	hs.g = NewGame(b, Human, Human)
 
 	player1CmdCh, hostCmdCh, player1GameCh, hostGameCh, player1QuitCh, hostQuitCh := hs.g.Start()
 

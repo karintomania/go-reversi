@@ -68,6 +68,7 @@ docker run --rm -it ghcr.io/karintomania/go-reversi:latest -n 6 -p 2
 ```
 
 ## Online Play
+**Online play is a still beta feature.**  
 To play online, one player needs to run a game server, and another player connects to the server.  
 
 Start a game server on port 4696:  

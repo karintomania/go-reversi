@@ -225,6 +225,24 @@ type AiClient struct {
 	cmdCh    chan GameCommand
 	quitCh   chan bool
 	PlayerId PlayerId
+	p        *AiPlayer
+}
+
+func NewAiClient(
+	n int,
+	gameCh chan Game,
+	cmdCh chan GameCommand,
+	quitCh chan bool,
+	id PlayerId,
+) AiClient {
+
+	return AiClient{
+		gameCh:   gameCh,
+		cmdCh:    cmdCh,
+		quitCh:   quitCh,
+		PlayerId: id,
+		p:        NewAiPlayer(n),
+	}
 }
 
 func (c *AiClient) Run() {
@@ -256,7 +274,7 @@ func (c *AiClient) placeWithMinimumLength(g *Game) GameCommand {
 		wg.Done()
 	}()
 
-	p := getAiPosition(g.Board)
+	p := c.p.getPosition(g.Board)
 
 	cmd := GameCommand{CommandType: CommandPlace, Position: p}
 

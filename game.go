@@ -181,17 +181,17 @@ func (g *Game) Start() (chan GameCommand, chan GameCommand, chan Game, chan Game
 }
 
 func (g *Game) place(p Position) {
-	b := g.Board
+	b, err := g.Board.Place(p)
 
-	err := b.Place(p)
 	if err != nil {
 		g.Message = fmt.Sprintf("%s", err)
 		return
 	}
+	g.Board = b
 
 	// deal with pass
 	passedCount := 0
-	for !b.HasLegalCells() && passedCount <= 2 {
+	for !b.HasLegalMove(b.Turn) && passedCount <= 2 {
 		g.pass()
 
 		passedCount++
@@ -226,7 +226,7 @@ func (g *Game) replay() {
 	// swap player colour
 	g.Player1.Colour, g.Player2.Colour = g.Player2.Colour, g.Player1.Colour
 
-	g.Board.init(g.Board.N)
+	g.Board.Replay()
 }
 
 func (g *Game) finish() {
@@ -261,7 +261,7 @@ func (g *Game) generateResultMessage() string {
 }
 
 func (g *Game) pass() {
-	g.Board.Pass()
+	g.Board.SwitchTurn()
 }
 
 func (g *Game) GetPlayer(id PlayerId) Player {
