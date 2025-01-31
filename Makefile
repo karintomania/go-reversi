@@ -31,7 +31,7 @@ clean:
 
 # You have to login with
 # echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u karintomania --password-stdin
-publish:
+publish-image:
 	docker build -t go-reversi --build-arg VERSION=$(VERSION) . 
 	docker tag go-reversi ghcr.io/karintomania/go-reversi:latest
 	docker push ghcr.io/karintomania/go-reversi:latest
